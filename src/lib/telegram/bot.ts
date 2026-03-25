@@ -5,9 +5,7 @@ const token = process.env.TELEGRAM_BOT_TOKEN
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-if (!token) {
-  console.error('CRITICAL: TELEGRAM_BOT_TOKEN is not set!')
-}
+if (!token) console.error('CRITICAL: TELEGRAM_BOT_TOKEN is not set!')
 
 export const bot = new Bot(token || 'DUMMY', {
   botInfo: {
@@ -45,45 +43,64 @@ export function setupBotHandlers() {
       `1. Ketik transaksi: "Beli makan siang 50rb pakai gopay"\n` +
       `2. Saya akan parse dan konfirmasi\n` +
       `3. Klik "Simpan" untuk menyimpan\n\n` +
-      `*Commands Tersedia:*\n` +
-      `/start - Mulai bot\n` +
+      `*Commands:*\n` +
+      `/start - Mulai\n` +
       `/help - Bantuan\n` +
-      `/hari_ini - Laporan hari ini\n` +
-      `/bulan_ini - Laporan bulan ini\n\n` +
-      `Ayo mulai catat keuangan Anda! 💰`,
+      `/kategori - Lihat kategori\n` +
+      `/dompet - Lihat dompet\n\n` +
+      `Ayo mulai catat keuangan! 💰`,
       { parse_mode: 'Markdown' }
     )
   })
 
   bot.command('help', async (ctx) => {
-    console.log('Help command from:', ctx.from?.id)
-    
     await ctx.reply(
-      `📖 *Bantuan CatatUang*\n\n` +
-      `*Input Transaksi:*\n` +
-      `Kirim pesan dengan format natural:\n` +
+      `📖 *Bantuan*\n\n` +
+      `*Contoh input:*\n` +
       `- "Beli kopi 25rb"\n` +
-      `- "Gaji masuk 15 juta"\n` +
-      `- "Transfer 500k dari BCA ke GoPay"\n\n` +
-      `*Commands:*\n` +
-      `/start - Mulai bot\n` +
-      `/help - Tampilkan bantuan ini\n` +
-      `/hari_ini - Ringkasan hari ini\n` +
-      `/minggu_ini - Ringkasan minggu ini\n` +
-      `/bulan_ini - Ringkasan bulan ini\n` +
-      `/export - Export laporan PDF/XLSX\n\n` +
+      `- "Gaji 15 juta"\n` +
+      `- "Transfer 500k BCA ke GoPay"\n\n` +
       `*Tips:*\n` +
-      `- Gunakan bahasa Indonesia santai\n` +
-      `- Sebutkan nominal (50rb, 100k, 1jt)\n` +
-      `- Sebutkan dompet (gopay, ovo, bca, cash)\n\n` +
-      `Butuh bantuan lain? Hubungi @eascreative`,
+      `- Bahasa Indonesia santai\n` +
+      `- Sebut nominal & dompet\n`,
       { parse_mode: 'Markdown' }
     )
   })
 
+  bot.command('kategori', async (ctx) => {
+    if (!supabase) return ctx.reply('❌ Database tidak terkoneksi')
+    
+    const { data } = await supabase
+      .from('categories')
+      .select('name')
+      .eq('group_id', 1)
+      .order('name')
+    
+    if (!data?.length) return ctx.reply('📭 Belum ada kategori')
+    
+    const list = data.map(c => `• ${c.name}`).join('\n')
+    await ctx.reply(`📋 *Kategori Tersedia:*\n\n${list}`, { parse_mode: 'Markdown' })
+  })
+
+  bot.command('dompet', async (ctx) => {
+    if (!supabase) return ctx.reply('❌ Database tidak terkoneksi')
+    
+    const { data } = await supabase
+      .from('wallets')
+      .select('name')
+      .eq('group_id', 1)
+      .order('name')
+    
+    if (!data?.length) return ctx.reply('📭 Belum ada dompet')
+    
+    const list = data.map(w => `• ${w.name}`).join('\n')
+    await ctx.reply(`💳 *Dompet Tersedia:*\n\n${list}`, { parse_mode: 'Markdown' })
+  })
+
   bot.on('message:text', async (ctx) => {
     const message = ctx.message.text
-    console.log('Message from:', ctx.from?.id, 'Text:', message)
+    const userId = ctx.from?.id.toString()
+    console.log('Message from:', userId, 'Text:', message)
 
     try {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://catatuang-three.vercel.app'
@@ -91,7 +108,7 @@ export function setupBotHandlers() {
       const response = await fetch(`${appUrl}/api/parse-transaction`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, group_id: 1 }),
       })
 
       const result = await response.json()
@@ -106,19 +123,17 @@ export function setupBotHandlers() {
       const txId = Math.random().toString(36).substring(2, 8)
       
       if (supabase) {
-        const { error } = await supabase
+        await supabase
           .from('ai_confirmations')
           .insert({
-            user_id: ctx.from?.id.toString(),
+            user_id: userId,
             group_id: 1,
             original_message: message,
             parsed_data: parsed,
             status: 'pending',
             expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
           })
-        
-        if (error) console.error('Failed to save confirmation:', error)
-        else console.log('Confirmation saved with txId:', txId)
+        console.log('Confirmation saved with txId:', txId)
       }
 
       let confirmationText = `✅ *Konfirmasi Transaksi*\n\n`
@@ -126,41 +141,55 @@ export function setupBotHandlers() {
       confirmationText += `*Jumlah:* ${amount}\n`
       confirmationText += `*Keterangan:* ${parsed.description}\n`
       confirmationText += `*Kategori:* ${parsed.category || 'Umum'}\n`
-      confirmationText += `*Dompet:* ${parsed.wallet || 'Cash'}\n\n`
+      confirmationText += `*Dompet:* ${parsed.wallet || 'Belum dipilih'}\n`
 
-      if (parsed.clarification_needed) {
-        confirmationText += `⚠️ _Saya kurang yakin. Mohon konfirmasi detail transaksi._`
+      if (parsed.suggested_categories && parsed.suggested_categories.length > 0) {
+        confirmationText += `\n⚠️ *Kategori baru:* ${parsed.suggested_categories.join(', ')}\n_Apakah Anda ingin menambahkan kategori ini?_\n`
+      }
+
+      if (parsed.clarification_needed && parsed.suggested_wallets) {
+        confirmationText += `\n⚠️ *Pilih Dompet:*\n`
+      }
+
+      const keyboard: any[][] = [[
+        { text: '✅ Simpan', callback_data: `save_${txId}` },
+        { text: '❌ Batal', callback_data: `cancel_${txId}` },
+      ]]
+
+      if (parsed.suggested_wallets && parsed.suggested_wallets.length > 0) {
+        for (const wallet of parsed.suggested_wallets) {
+          keyboard.push([{ text: `💳 ${wallet}`, callback_data: `wallet_${txId}_${wallet}` }])
+        }
       }
 
       await ctx.reply(confirmationText, {
         parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '✅ Simpan', callback_data: `save_${txId}` },
-            { text: '❌ Batal', callback_data: `cancel_${txId}` },
-          ]],
-        },
+        reply_markup: { inline_keyboard: keyboard },
       })
       console.log('Confirmation sent')
     } catch (error: any) {
       console.error('Message error:', error)
-      await ctx.reply('❌ Terjadi kesalahan. Silakan coba lagi.')
+      await ctx.reply('❌ Terjadi kesalahan')
     }
   })
 
   bot.on('callback_query:data', async (ctx) => {
-    const [action, txId] = ctx.callbackQuery.data.split('_')
+    const parts = ctx.callbackQuery.data.split('_')
+    const action = parts[0]
+    const txId = parts[1]
+    const selectedWallet = parts[2]
+    
     console.log('Callback:', action, txId, 'from:', ctx.from?.id)
 
     if (!supabase) {
-      await ctx.answerCallbackQuery({ show_alert: true, text: 'Database belum dikonfigurasi' })
+      await ctx.answerCallbackQuery({ show_alert: true, text: 'Database error' })
       return
     }
 
     const userId = ctx.from?.id.toString()
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
     
-    const { data: confirmations, error: fetchError } = await supabase
+    const { data: confirmation, error: fetchError } = await supabase
       .from('ai_confirmations')
       .select('*')
       .eq('user_id', userId)
@@ -170,32 +199,65 @@ export function setupBotHandlers() {
       .limit(1)
       .single()
 
-    if (fetchError || !confirmations) {
-      console.error('Confirmation not found:', fetchError)
-      await ctx.answerCallbackQuery({ show_alert: true, text: 'Transaksi sudah expired atau tidak ditemukan' })
+    if (fetchError || !confirmation) {
+      await ctx.answerCallbackQuery({ show_alert: true, text: 'Transaksi expired' })
       return
     }
 
     if (action === 'cancel') {
-      await supabase.from('ai_confirmations').update({ status: 'rejected' }).eq('id', confirmations.id)
+      await supabase.from('ai_confirmations').update({ status: 'rejected' }).eq('id', confirmation.id)
       await ctx.answerCallbackQuery()
       await ctx.editMessageText('❌ Transaksi dibatalkan')
-      console.log('Transaction cancelled')
+      return
+    }
+
+    if (action === 'wallet') {
+      const parsed = confirmation.parsed_data as any
+      parsed.wallet = selectedWallet
+      parsed.clarification_needed = false
+      
+      await supabase
+        .from('ai_confirmations')
+        .update({ parsed_data: parsed })
+        .eq('id', confirmation.id)
+      
+      await ctx.answerCallbackQuery()
+      await ctx.editMessageText(
+        `✅ Dompet dipilih: *${selectedWallet}*\n\n` +
+        `Klik "Simpan" untuk melanjutkan.`,
+        { 
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '✅ Simpan', callback_data: `save_${txId}` },
+              { text: '❌ Batal', callback_data: `cancel_${txId}` },
+            ]],
+          },
+        }
+      )
+      console.log('Wallet selected:', selectedWallet)
       return
     }
 
     if (action === 'save') {
       try {
-        const parsed = confirmations.parsed_data
-        const groupId = 1
+        const parsed = confirmation.parsed_data as any
         
+        if (!parsed.wallet && parsed.suggested_wallets?.length) {
+          await ctx.answerCallbackQuery({ 
+            show_alert: true, 
+            text: 'Pilih dompet terlebih dahulu' 
+          })
+          return
+        }
+
         const { data: transaction, error: txError } = await supabase
           .from('transactions')
           .insert({
             type: parsed.type,
             amount: parsed.amount,
-            description: parsed.description || confirmations.original_message,
-            group_id: groupId,
+            description: parsed.description || confirmation.original_message,
+            group_id: 1,
             telegram_user_id: userId,
             transaction_date: new Date().toISOString(),
           })
@@ -204,15 +266,15 @@ export function setupBotHandlers() {
         
         if (txError) throw txError
         
-        await supabase.from('ai_confirmations').update({ status: 'confirmed' }).eq('id', confirmations.id)
+        await supabase.from('ai_confirmations').update({ status: 'confirmed' }).eq('id', confirmation.id)
         
         console.log('Transaction created:', transaction)
         await ctx.answerCallbackQuery()
-        await ctx.editMessageText('✅ Transaksi berhasil disimpan!\n\nTransaksi sudah masuk ke database.')
+        await ctx.editMessageText('✅ Transaksi berhasil disimpan!\n\nSudah masuk database.')
       } catch (error: any) {
         console.error('Save error:', error)
         await ctx.answerCallbackQuery({ show_alert: true })
-        await ctx.editMessageText('❌ Error saat menyimpan: ' + error.message)
+        await ctx.editMessageText('❌ Error: ' + error.message)
       }
     }
   })
