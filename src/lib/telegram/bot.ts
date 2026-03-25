@@ -25,6 +25,13 @@ const supabase = supabaseUrl && supabaseKey
 
 console.log('Supabase client initialized:', !!supabase)
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 export function setupBotHandlers() {
   if (!token) {
     console.error('Cannot setup handlers: TELEGRAM_BOT_TOKEN missing')
@@ -37,45 +44,45 @@ export function setupBotHandlers() {
     console.log('Start command from:', ctx.from?.id)
     
     await ctx.reply(
-      `👋 *Halo! Saya CatatUang Bot*\n\n` +
+      `👋 <b>Halo! Saya CatatUang Bot</b>\n\n` +
       `Saya asisten AI untuk mencatat keuangan Anda.\n\n` +
-      `*Cara Pakai:*\n` +
+      `<b>Cara Pakai:</b>\n` +
       `1. Ketik: "Beli makan 50rb dari GoPay"\n` +
       `2. AI akan parse & konfirmasi\n` +
       `3. Pilih dompet & kategori\n` +
       `4. Klik "Simpan"\n\n` +
-      `*Commands:*\n` +
+      `<b>Commands:</b>\n` +
       `/start - Mulai\n` +
       `/help - Bantuan\n` +
       `/kategori - Lihat kategori\n` +
       `/dompet - Lihat dompet\n` +
       `/tambah_kategori Nama - Tambah kategori\n` +
       `/tambah_dompet Nama - Tambah dompet\n\n` +
-      `💡 *Tips:* Sebutkan dompet agar lebih cepat!\n` +
+      `💡 <b>Tips:</b> Sebutkan dompet agar lebih cepat!\n` +
       `Contoh: "Beli kopi 25rb dari GoPay"`,
-      { parse_mode: 'Markdown' }
+      { parse_mode: 'HTML' }
     )
   })
 
   bot.command('help', async (ctx) => {
     await ctx.reply(
-      `📖 *Bantuan*\n\n` +
-      `*Input Transaksi:*\n` +
+      `📖 <b>Bantuan</b>\n\n` +
+      `<b>Input Transaksi:</b>\n` +
       `Kirim pesan natural:\n` +
       `- "Beli kopi 25rb dari GoPay"\n` +
       `- "Gaji 15 juta ke BCA"\n` +
       `- "Transfer 500k BCA ke GoPay"\n\n` +
-      `*Commands:*\n` +
+      `<b>Commands:</b>\n` +
       `/start - Mulai\n` +
       `/help - Bantuan\n` +
       `/kategori - List kategori\n` +
       `/dompet - List dompet\n` +
       `/tambah_kategori Makanan - Tambah kategori\n` +
       `/tambah_dompet GoPay - Tambah dompet\n\n` +
-      `*PENTING:*\n` +
+      `<b>PENTING:</b>\n` +
       `- Untuk pengeluaran, WAJIB pilih dompet\n` +
       `- Jika tidak sebut, bot akan tampilkan pilihan`,
-      { parse_mode: 'Markdown' }
+      { parse_mode: 'HTML' }
     )
   })
 
@@ -90,16 +97,16 @@ export function setupBotHandlers() {
     
     if (!data?.length) {
       return ctx.reply(
-        `📭 *Belum ada kategori*\n\n` +
+        `📭 <b>Belum ada kategori</b>\n\n` +
         `Gunakan command:\n` +
         `/tambah_kategori NamaKategori\n\n` +
         `Contoh: /tambah_kategori Makanan`,
-        { parse_mode: 'Markdown' }
+        { parse_mode: 'HTML' }
       )
     }
     
-    const list = data.map(c => `• ${c.name}`).join('\n')
-    await ctx.reply(`📋 *Kategori Tersedia:*\n\n${list}`, { parse_mode: 'Markdown' })
+    const list = data.map((c: any) => `• ${escapeHtml(c.name)}`).join('\n')
+    await ctx.reply(`📋 <b>Kategori Tersedia:</b>\n\n${list}`, { parse_mode: 'HTML' })
   })
 
   bot.command('dompet', async (ctx) => {
@@ -113,16 +120,16 @@ export function setupBotHandlers() {
     
     if (!data?.length) {
       return ctx.reply(
-        `💳 *Belum ada dompet*\n\n` +
+        `💳 <b>Belum ada dompet</b>\n\n` +
         `Gunakan command:\n` +
         `/tambah_dompet NamaDompet\n\n` +
         `Contoh: /tambah_dompet GoPay`,
-        { parse_mode: 'Markdown' }
+        { parse_mode: 'HTML' }
       )
     }
     
-    const list = data.map(w => `• ${w.name}`).join('\n')
-    await ctx.reply(`💳 *Dompet Tersedia:*\n\n${list}`, { parse_mode: 'Markdown' })
+    const list = data.map((w: any) => `• ${escapeHtml(w.name)}`).join('\n')
+    await ctx.reply(`💳 <b>Dompet Tersedia:</b>\n\n${list}`, { parse_mode: 'HTML' })
   })
 
   bot.command('tambah_kategori', async (ctx) => {
@@ -136,10 +143,10 @@ export function setupBotHandlers() {
       .insert({ name: args.trim(), group_id: 1 })
     
     if (error) {
-      return ctx.reply(`❌ Error: ${error.message}`)
+      return ctx.reply(`❌ Error: ${escapeHtml(error.message)}`)
     }
     
-    await ctx.reply(`✅ Kategori "*${args.trim()}*" berhasil ditambahkan!`, { parse_mode: 'Markdown' })
+    await ctx.reply(`✅ Kategori "<b>${escapeHtml(args.trim())}</b>" berhasil ditambahkan!`, { parse_mode: 'HTML' })
   })
 
   bot.command('tambah_dompet', async (ctx) => {
@@ -153,10 +160,10 @@ export function setupBotHandlers() {
       .insert({ name: args.trim(), group_id: 1 })
     
     if (error) {
-      return ctx.reply(`❌ Error: ${error.message}`)
+      return ctx.reply(`❌ Error: ${escapeHtml(error.message)}`)
     }
     
-    await ctx.reply(`✅ Dompet "*${args.trim()}*" berhasil ditambahkan!`, { parse_mode: 'Markdown' })
+    await ctx.reply(`✅ Dompet "<b>${escapeHtml(args.trim())}</b>" berhasil ditambahkan!`, { parse_mode: 'HTML' })
   })
 
   bot.on('message:text', async (ctx) => {
@@ -176,7 +183,7 @@ export function setupBotHandlers() {
       const result = await response.json()
 
       if (result.error) {
-        await ctx.reply(`❌ Error: ${result.error}`)
+        await ctx.reply(`❌ Error: ${escapeHtml(result.error)}`)
         return
       }
 
@@ -189,15 +196,15 @@ export function setupBotHandlers() {
         supabase?.from('wallets').select('name').eq('group_id', 1).order('name'),
       ])
       
-      const categoryList = categories?.map(c => c.name) || []
-      const walletList = wallets?.map(w => w.name) || []
+      const categoryList = categories?.map((c: any) => c.name) || []
+      const walletList = wallets?.map((w: any) => w.name) || []
       
       // Check if database is empty
       const isEmptyDB = categoryList.length === 0 && walletList.length === 0
       
       if (isEmptyDB) {
         await ctx.reply(
-          `⚠️ *Database Masih Kosong!*\n\n` +
+          `⚠️ <b>Database Masih Kosong!</b>\n\n` +
           `Sebelum catat transaksi, tambahkan dompet dulu:\n\n` +
           `/tambah_dompet GoPay\n` +
           `/tambah_dompet BCA\n` +
@@ -205,7 +212,7 @@ export function setupBotHandlers() {
           `Dan kategori:\n` +
           `/tambah_kategori Makanan\n` +
           `/tambah_kategori Transport`,
-          { parse_mode: 'Markdown' }
+          { parse_mode: 'HTML' }
         )
         return
       }
@@ -228,39 +235,33 @@ export function setupBotHandlers() {
       const typeLabel = parsed.type === 'income' ? 'Pemasukan' : parsed.type === 'expense' ? 'Pengeluaran' : 'Transfer'
       const amount = parsed.amount ? `Rp ${parsed.amount.toLocaleString('id-ID')}` : '❓ Belum ada nominal'
 
-      let confirmationText = `✅ *Konfirmasi Transaksi*\n\n`
-      confirmationText += `*Jenis:* ${typeLabel}\n`
-      confirmationText += `*Jumlah:* ${amount}\n`
-      confirmationText += `*Keterangan:* ${parsed.description}\n`
+      let confirmationText = `✅ <b>Konfirmasi Transaksi</b>\n\n`
+      confirmationText += `<b>Jenis:</b> ${typeLabel}\n`
+      confirmationText += `<b>Jumlah:</b> ${amount}\n`
+      confirmationText += `<b>Keterangan:</b> ${escapeHtml(parsed.description)}\n`
 
-      // Category section
       if (parsed.category && parsed.category !== 'Umum') {
-        confirmationText += `*Kategori:* ${parsed.category}\n`
+        confirmationText += `<b>Kategori:</b> ${escapeHtml(parsed.category)}\n`
       } else {
-        confirmationText += `*Kategori:* Umum (default)\n`
+        confirmationText += `<b>Kategori:</b> Umum (default)\n`
       }
 
-      // Wallet section
       if (parsed.wallet) {
-        confirmationText += `*Dompet:* ${parsed.wallet} ✅\n`
+        confirmationText += `<b>Dompet:</b> ${escapeHtml(parsed.wallet)} ✅\n`
       } else if (parsed.type === 'expense' || parsed.type === 'income') {
-        confirmationText += `*Dompet:* ⚠️ *Belum dipilih*\n`
+        confirmationText += `<b>Dompet:</b> ⚠️ <b>Belum dipilih</b>\n`
       }
 
-      // Add suggestions
       if (parsed.suggested_categories?.length) {
-        confirmationText += `\n💡 *Kategori baru terdeteksi:* ${parsed.suggested_categories.join(', ')}\n`
+        confirmationText += `\n💡 <b>Kategori baru terdeteksi:</b> ${parsed.suggested_categories.map(escapeHtml).join(', ')}\n`
       }
 
-      // Build keyboard - ONLY show wallet buttons if wallet not selected
       const keyboard: any[][] = []
 
       if (!parsed.wallet && (parsed.type === 'expense' || parsed.type === 'income')) {
-        // Wallet NOT selected - show wallet buttons ONLY
-        confirmationText += `\n⚠️ *Pilih dompet terlebih dahulu:*\n`
+        confirmationText += `\n⚠️ <b>Pilih dompet terlebih dahulu:</b>\n`
         
         if (walletList.length > 0) {
-          // Show wallet buttons in rows of 2
           for (let i = 0; i < walletList.length; i += 2) {
             const row = []
             row.push({ text: `💳 ${walletList[i]}`, callback_data: `wallet_${txId}_${walletList[i]}` })
@@ -273,9 +274,8 @@ export function setupBotHandlers() {
           confirmationText += `\n💳 Belum ada dompet. Gunakan /tambah_dompet`
         }
       } else {
-        // Wallet already selected - show Save/Cancel buttons
         if (parsed.wallet) {
-          confirmationText += `\n✅ *Siap disimpan!*\n`
+          confirmationText += `\n✅ <b>Siap disimpan!</b>\n`
         }
         
         keyboard.push([
@@ -285,7 +285,7 @@ export function setupBotHandlers() {
       }
 
       await ctx.reply(confirmationText, {
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
         reply_markup: { inline_keyboard: keyboard },
       })
       console.log('Confirmation sent')
@@ -349,15 +349,15 @@ export function setupBotHandlers() {
       const typeLabel = parsed.type === 'income' ? 'Pemasukan' : 'Pengeluaran'
       
       await ctx.editMessageText(
-        `✅ *Dompet Dipilih: ${selectedWallet}*\n\n` +
-        `*Jenis:* ${typeLabel}\n` +
-        `*Jumlah:* ${amount}\n` +
-        `*Keterangan:* ${parsed.description}\n` +
-        `*Kategori:* ${parsed.category || 'Umum'}\n` +
-        `*Dompet:* ${selectedWallet} ✅\n\n` +
-        `Klik *Simpan* untuk menyimpan transaksi.`,
+        `✅ <b>Dompet Dipilih: ${escapeHtml(selectedWallet)}</b>\n\n` +
+        `<b>Jenis:</b> ${typeLabel}\n` +
+        `<b>Jumlah:</b> ${amount}\n` +
+        `<b>Keterangan:</b> ${escapeHtml(parsed.description)}\n` +
+        `<b>Kategori:</b> ${escapeHtml(parsed.category || 'Umum')}\n` +
+        `<b>Dompet:</b> ${escapeHtml(selectedWallet)} ✅\n\n` +
+        `Klik <b>Simpan</b> untuk menyimpan transaksi.`,
         { 
-          parse_mode: 'Markdown',
+          parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [[
               { text: '✅ Simpan', callback_data: `save_${txId}` },
@@ -402,7 +402,7 @@ export function setupBotHandlers() {
       } catch (error: any) {
         console.error('Save error:', error)
         await ctx.answerCallbackQuery({ show_alert: true })
-        await ctx.editMessageText('❌ Error: ' + error.message)
+        await ctx.editMessageText(`❌ Error: ${escapeHtml(error.message)}`)
       }
     }
   })
