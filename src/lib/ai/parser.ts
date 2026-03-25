@@ -1,8 +1,10 @@
 import Groq from 'groq-sdk'
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-})
+const groqApiKey = process.env.GROQ_API_KEY
+
+console.log('Groq API Key present:', !!groqApiKey)
+
+const groq = groqApiKey ? new Groq({ apiKey: groqApiKey }) : null
 
 const SYSTEM_PROMPT = `Anda adalah CatatUang AI, asisten parser transaksi keuangan untuk pengguna Indonesia.
 
@@ -128,6 +130,13 @@ interface ParseResult {
 }
 
 export async function parseTransaction(message: string): Promise<ParseResult> {
+  console.log('Parsing message:', message)
+  
+  if (!groq) {
+    console.error('Groq client not initialized - API key missing')
+    return mockParseTransaction(message)
+  }
+  
   try {
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',

@@ -3,17 +3,17 @@ import { bot } from '@/lib/telegram/bot'
 
 export async function GET() {
   try {
-    const botInfo = await bot.getMe()
+    const botInfo = bot.botInfo
     
     return NextResponse.json({
       status: 'ok',
-      bot: {
+      bot: botInfo ? {
         id: botInfo.id,
         username: botInfo.username,
         first_name: botInfo.first_name,
-        is_bot: botInfo.isBot,
-      },
-      initialized: true,
+        is_bot: botInfo.is_bot,
+      } : null,
+      initialized: !!botInfo,
     })
   } catch (error: any) {
     return NextResponse.json({
