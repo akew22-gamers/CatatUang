@@ -6,6 +6,12 @@ console.log('Groq API Key present:', !!groqApiKey)
 
 const groq = groqApiKey ? new Groq({ apiKey: groqApiKey }) : null
 
+const GROQ_MODEL = 'llama-3.1-8b-instant'
+const OPENROUTER_MODEL = 'meta-llama/llama-3-8b-instruct'
+
+console.log('Using Groq model:', GROQ_MODEL)
+console.log('Using OpenRouter model:', OPENROUTER_MODEL)
+
 const SYSTEM_PROMPT = `Anda adalah CatatUang AI, asisten parser transaksi keuangan untuk pengguna Indonesia.
 
 TUGAS: Ekstrak informasi transaksi dari input bahasa natural (termasuk slang Indonesia).
@@ -138,8 +144,10 @@ export async function parseTransaction(message: string): Promise<ParseResult> {
   }
   
   try {
+    console.log('Calling Groq API with model:', GROQ_MODEL)
+    
     const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_MODEL, // FREE: llama-3.1-8b-instant
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: message },
