@@ -1,8 +1,9 @@
-# CatatUang - Technical Implementation Plan (v2.0)
+# CatatUang - Technical Implementation Plan (v2.1)
 
 **Based on:** Context7 Documentation Research  
 **Date:** 25 Maret 2026  
-**Status:** ✅ Research-Backed & Verified
+**Status:** ✅ Research-Backed & Verified  
+**Update:** Added Supabase Realtime Sync for all tables
 
 ---
 
@@ -40,6 +41,71 @@ using (
 
 -- ❌ WRONG: Application-level filtering only
 select * from transactions where group_id = $current_group_id;
+```
+
+### Realtime Sync (CRITICAL REQUIREMENT)
+
+**Requirement:** Semua tabel harus support realtime sync untuk:
+- Web dashboard auto-update saat transaksi baru dari Telegram
+- Sinkronisasi real-time Telegram bot ↔ Web app
+- Collaboration dalam group (member lihat perubahan live)
+
+**Implementation:**
+```sql
+-- Enable realtime untuk semua tabel
+alter publication supabase_realtime add table profiles;
+alter publication supabase_realtime add table groups;
+alter publication supabase_realtime add table group_members;
+alter publication supabase_realtime add table wallets;
+alter publication supabase_realtime add table categories;
+alter publication supabase_realtime add table transactions;
+alter publication supabase_realtime add table ai_confirmations;
+
+-- Realtime mengikuti RLS policies (user hanya receive updates yang bisa akses)
+-- No additional setup needed - Supabase realtime respects RLS by default
+```
+
+**Client-Side Usage (Next.js):**
+```typescript
+// Subscribe to real-time transaction updates
+import { createClient } from '@/lib/supabase/client'
+
+const supabase = createClient()
+
+// Subscribe to transactions table
+const channel = supabase
+  .channel('transactions-changes')
+  .on(
+    'postgres_changes',
+    {
+      event: '*', // INSERT, UPDATE, DELETE
+      schema: 'public',
+      table: 'transactions',
+      filter: `group_id=eq.${groupId}`, // Optional: filter by group
+    },
+    (payload) => {
+      console.log('Real-time update received:', payload)
+      // payload.eventType: 'INSERT' | 'UPDATE' | 'DELETE'
+      // payload.new: the new/updated row (for INSERT/UPDATE)
+      // payload.old: the old row (for DELETE/UPDATE)
+      
+      // Update UI state here (React Query, Zustand, etc.)
+    }
+  )
+  .subscribe()
+
+// Cleanup on unmount
+return () => {
+  supabase.removeChannel(channel)
+}
+```
+
+**Benefits:**
+- ✅ No manual polling needed
+- ✅ Instant updates across all connected clients
+- ✅ RLS-enforced (users only see updates they're authorized for)
+- ✅ Works seamlessly with Telegram bot + Web dashboard
+
 ```
 
 **Updated Schema Design:**
@@ -250,7 +316,8 @@ CatatUang/
     │   ├── 0005_create_categories.sql
     │   ├── 0006_create_transactions.sql
     │   ├── 0007_create_ai_confirmations.sql
-    │   └── 0008_setup_rls_policies.sql
+    │   ├── 0008_setup_rls_policies.sql
+    │   └── 0009_enable_realtime_sync.sql
     └── config.toml
 ```
 
@@ -647,8 +714,9 @@ export async function POST(req: NextRequest) {
 ### Phase 1: Foundation (RESEARCH-BACKED)
 
 - [ ] **1.1 Database Migrations** (Supabase)
-  - [ ] Create 7 SQL migration files
+  - [ ] Create 9 SQL migration files
   - [ ] Setup RLS policies
+  - [ ] Enable realtime sync for all tables
   - [ ] Create indexes for performance
   - [ ] Test migrations locally (`supabase start`)
   - [ ] Push to production (`supabase db push`)
@@ -811,18 +879,20 @@ export async function POST(req: NextRequest) {
 4. **Webhook, NOT polling** for Telegram on Vercel
 5. **Environment variables** - Use `.env.example` template, NEVER commit secrets
 6. **Group-based multi-tenancy** - All queries must filter by group_id via RLS
+7. **REALTIME SYNC ENABLED** - All tables must have realtime enabled for live updates
 
 ---
 
 ## 📚 References
 
 - [Supabase RLS Best Practices](https://github.com/supabase/supabase)
+- [Supabase Realtime Documentation](https://supabase.com/docs/guides/realtime)
 - [Next.js App Router Structure](https://github.com/vercel/next.js)
 - [grammY Vercel Deployment](https://github.com/grammyjs/website)
 - [Financial Data Extraction Research](https://arxiv.org/)
 
 ---
 
-**Version:** 2.0 (Research-Backed)  
+**Version:** 2.1 (Research-Backed + Realtime Sync)  
 **Last Updated:** 25 Maret 2026  
 **Ready for:** Phase 1 Implementation ✅
