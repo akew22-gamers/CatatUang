@@ -53,8 +53,6 @@ export function setupBotHandlers() {
   })
 
   bot.command('help', async (ctx) => {
-    console.log('Help command from:', ctx.from?.id)
-    
     await ctx.reply(
       `📖 *Bantuan*\n\n` +
       `*Contoh input:*\n` +
@@ -91,28 +89,22 @@ export function setupBotHandlers() {
 
       const parsed = result.data
       const amount = parsed.amount ? `Rp ${parsed.amount.toLocaleString('id-ID')}` : '❓'
-      
-      // Generate short ID
       const txId = Math.random().toString(36).substring(2, 8)
       
-      // Store in Supabase
       if (supabase) {
         const { error } = await supabase
           .from('ai_confirmations')
           .insert({
             user_id: ctx.from?.id.toString(),
-            group_id: 1, // TODO: Get user's group
+            group_id: 1,
             original_message: message,
             parsed_data: parsed,
             status: 'pending',
             expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
           })
         
-        if (error) {
-          console.error('Failed to save confirmation:', error)
-        } else {
-          console.log('Confirmation saved to DB with txId:', txId)
-        }
+        if (error) console.error('Failed to save confirmation:', error)
+        else console.log('Confirmation saved with txId:', txId)
       }
 
       const confirmationText = 
@@ -132,7 +124,7 @@ export function setupBotHandlers() {
           ]],
         },
       })
-      console.log('Confirmation sent with txId:', txId)
+      console.log('Confirmation sent')
     } catch (error: any) {
       console.error('Message error:', error)
       await ctx.reply('❌ Terjadi kesalahan')
@@ -144,14 +136,10 @@ export function setupBotHandlers() {
     console.log('Callback:', action, txId, 'from:', ctx.from?.id)
 
     if (!supabase) {
-      await ctx.answerCallbackQuery({ 
-        show_alert: true, 
-        text: 'Database not configured' 
-      })
+      await ctx.answerCallbackQuery({ show_alert: true, text: 'Database not configured' })
       return
     }
 
-    // Find pending confirmation by user_id and recent
     const userId = ctx.from?.id.toString()
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
     
@@ -167,39 +155,31 @@ export function setupBotHandlers() {
 
     if (fetchError || !confirmations) {
       console.error('Confirmation not found:', fetchError)
-      await ctx.answerCallbackQuery({ 
-        show_alert: true, 
-        text: 'Transaksi sudah expired atau tidak ditemukan' 
-      })
+      await ctx.answerCallbackQuery({ show_alert: true, text: 'Transaksi expired' })
       return
     }
 
     if (action === 'cancel') {
-      await supabase
-        .from('ai_confirmations')
-        .update({ status: 'rejected' })
-        .eq('id', confirmations.id)
-      
+      await supabase.from('ai_confirmations').update({ status: 'rejected' }).eq('id', confirmations.id)
       await ctx.answerCallbackQuery()
-      await ctx.editMessageText('❌ Transaksi dibatalkan')
-      console.log('Transaction cancelled:', confirmations.id)
+      await ctx.editMessageText('❌ Dibatalkan')
+      console.log('Transaction cancelled')
       return
     }
 
     if (action === 'save') {
       try {
         const parsed = confirmations.parsed_data
-        const groupId = 1 // TODO: Get user's actual group
+        const groupId = 1
         
-        // Create actual transaction in database
         const { data: transaction, error: txError } = await supabase
           .from('transactions')
           .insert({
             type: parsed.type,
             amount: parsed.amount,
-            description: parsed.description || parsed.original_message,
+            description: parsed.description || confirmations.original_message,
             group_id: groupId,
-            created_by: userId,
+            telegram_user_id: userId,
             transaction_date: new Date().toISOString(),
           })
           .select()
@@ -207,20 +187,15 @@ export function setupBotHandlers() {
         
         if (txError) throw txError
         
-        // Update confirmation status
-        await supabase
-          .from('ai_confirmations')
-          .update({ status: 'confirmed' })
-          .eq('id', confirmations.id)
+        await supabase.from('ai_confirmations').update({ status: 'confirmed' }).eq('id', confirmations.id)
         
         console.log('Transaction created:', transaction)
-        
         await ctx.answerCallbackQuery()
-        await ctx.editMessageText('✅ Transaksi berhasil disimpan!\n\nTransaksi sudah masuk database.')
+        await ctx.editMessageText('✅ Tersimpan di database!')
       } catch (error: any) {
         console.error('Save error:', error)
         await ctx.answerCallbackQuery({ show_alert: true })
-        await ctx.editMessageText('❌ Error saat menyimpan: ' + error.message)
+        await ctx.editMessageText('❌ Error: ' + error.message)
       }
     }
   })
