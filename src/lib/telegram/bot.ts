@@ -189,22 +189,38 @@ export function setupBotHandlers() {
     if (action === 'save') {
       try {
         const parsed = confirmations.parsed_data
+        const groupId = 1 // TODO: Get user's actual group
         
-        // TODO: Create actual transaction in database
-        // For now, just update confirmation status
+        // Create actual transaction in database
+        const { data: transaction, error: txError } = await supabase
+          .from('transactions')
+          .insert({
+            type: parsed.type,
+            amount: parsed.amount,
+            description: parsed.description || parsed.original_message,
+            group_id: groupId,
+            created_by: userId,
+            transaction_date: new Date().toISOString(),
+          })
+          .select()
+          .single()
+        
+        if (txError) throw txError
+        
+        // Update confirmation status
         await supabase
           .from('ai_confirmations')
           .update({ status: 'confirmed' })
           .eq('id', confirmations.id)
         
-        console.log('Transaction saved:', parsed)
+        console.log('Transaction created:', transaction)
         
         await ctx.answerCallbackQuery()
-        await ctx.editMessageText('✅ Transaksi berhasil disimpan!\n\n_Note: DB integration akan disusukan_')
+        await ctx.editMessageText('✅ Transaksi berhasil disimpan!\n\nTransaksi sudah masuk database.')
       } catch (error: any) {
         console.error('Save error:', error)
         await ctx.answerCallbackQuery({ show_alert: true })
-        await ctx.editMessageText('❌ Error saat menyimpan')
+        await ctx.editMessageText('❌ Error saat menyimpan: ' + error.message)
       }
     }
   })
