@@ -6,7 +6,17 @@ if (!token) {
   console.error('CRITICAL: TELEGRAM_BOT_TOKEN is not set!')
 }
 
-export const bot = new Bot(token || 'DUMMY')
+export const bot = new Bot(token || 'DUMMY', {
+  botInfo: {
+    id: 8619042101,
+    is_bot: true,
+    first_name: 'CatatUang Bot',
+    username: 'CatatUangBot',
+    can_join_groups: true,
+    can_read_all_group_messages: false,
+    supports_inline_queries: false,
+  },
+})
 
 export function setupBotHandlers() {
   if (!token) {
