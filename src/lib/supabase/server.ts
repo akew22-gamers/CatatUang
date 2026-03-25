@@ -1,5 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/dist/server/request/cookies'
+import { cookies } from 'next/headers'
 import { Database } from '@/types/database.types'
 
 export function createClient() {
