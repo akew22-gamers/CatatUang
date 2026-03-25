@@ -1,6 +1,9 @@
 import { Bot } from 'grammy'
+import { createClient } from '@supabase/supabase-js'
 
 const token = process.env.TELEGRAM_BOT_TOKEN
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!token) {
   console.error('CRITICAL: TELEGRAM_BOT_TOKEN is not set!')
@@ -18,8 +21,11 @@ export const bot = new Bot(token || 'DUMMY', {
   },
 })
 
-// Temporary storage for pending transactions (in production, use Redis/DB)
-const pendingTransactions = new Map<string, any>()
+const supabase = supabaseUrl && supabaseKey 
+  ? createClient(supabaseUrl, supabaseKey)
+  : null
+
+console.log('Supabase client initialized:', !!supabase)
 
 export function setupBotHandlers() {
   if (!token) {
@@ -86,12 +92,28 @@ export function setupBotHandlers() {
       const parsed = result.data
       const amount = parsed.amount ? `Rp ${parsed.amount.toLocaleString('id-ID')}` : '❓'
       
-      // Generate short ID for this transaction
+      // Generate short ID
       const txId = Math.random().toString(36).substring(2, 8)
-      pendingTransactions.set(txId, { ...parsed, userId: ctx.from?.id })
       
-      // Clean up old transactions after 5 minutes
-      setTimeout(() => pendingTransactions.delete(txId), 5 * 60 * 1000)
+      // Store in Supabase
+      if (supabase) {
+        const { error } = await supabase
+          .from('ai_confirmations')
+          .insert({
+            user_id: ctx.from?.id.toString(),
+            group_id: 1, // TODO: Get user's group
+            original_message: message,
+            parsed_data: parsed,
+            status: 'pending',
+            expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+          })
+        
+        if (error) {
+          console.error('Failed to save confirmation:', error)
+        } else {
+          console.log('Confirmation saved to DB with txId:', txId)
+        }
+      }
 
       const confirmationText = 
         `✅ *Konfirmasi*\n\n` +
@@ -121,9 +143,30 @@ export function setupBotHandlers() {
     const [action, txId] = ctx.callbackQuery.data.split('_')
     console.log('Callback:', action, txId, 'from:', ctx.from?.id)
 
-    const transaction = pendingTransactions.get(txId)
+    if (!supabase) {
+      await ctx.answerCallbackQuery({ 
+        show_alert: true, 
+        text: 'Database not configured' 
+      })
+      return
+    }
 
-    if (!transaction) {
+    // Find pending confirmation by user_id and recent
+    const userId = ctx.from?.id.toString()
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    
+    const { data: confirmations, error: fetchError } = await supabase
+      .from('ai_confirmations')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+      .gt('created_at', fiveMinutesAgo)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (fetchError || !confirmations) {
+      console.error('Confirmation not found:', fetchError)
       await ctx.answerCallbackQuery({ 
         show_alert: true, 
         text: 'Transaksi sudah expired atau tidak ditemukan' 
@@ -132,19 +175,30 @@ export function setupBotHandlers() {
     }
 
     if (action === 'cancel') {
-      pendingTransactions.delete(txId)
+      await supabase
+        .from('ai_confirmations')
+        .update({ status: 'rejected' })
+        .eq('id', confirmations.id)
+      
       await ctx.answerCallbackQuery()
       await ctx.editMessageText('❌ Transaksi dibatalkan')
-      console.log('Transaction cancelled:', txId)
+      console.log('Transaction cancelled:', confirmations.id)
       return
     }
 
     if (action === 'save') {
       try {
-        // TODO: Save to database
-        console.log('Transaction saved:', transaction)
+        const parsed = confirmations.parsed_data
         
-        pendingTransactions.delete(txId)
+        // TODO: Create actual transaction in database
+        // For now, just update confirmation status
+        await supabase
+          .from('ai_confirmations')
+          .update({ status: 'confirmed' })
+          .eq('id', confirmations.id)
+        
+        console.log('Transaction saved:', parsed)
+        
         await ctx.answerCallbackQuery()
         await ctx.editMessageText('✅ Transaksi berhasil disimpan!\n\n_Note: DB integration akan disusukan_')
       } catch (error: any) {
