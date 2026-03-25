@@ -40,29 +40,43 @@ export function setupBotHandlers() {
     
     await ctx.reply(
       `👋 *Halo! Saya CatatUang Bot*\n\n` +
-      `Saya asisten AI untuk mencatat keuangan.\n\n` +
+      `Saya asisten AI untuk mencatat keuangan Anda dengan mudah.\n\n` +
       `*Cara Pakai:*\n` +
-      `1. Ketik: "Beli makan 50rb pakai gopay"\n` +
-      `2. AI parse & konfirmasi\n` +
-      `3. Klik "Simpan"\n\n` +
-      `*Commands:*\n` +
-      `/start - Mulai\n` +
-      `/help - Bantuan\n`,
+      `1. Ketik transaksi: "Beli makan siang 50rb pakai gopay"\n` +
+      `2. Saya akan parse dan konfirmasi\n` +
+      `3. Klik "Simpan" untuk menyimpan\n\n` +
+      `*Commands Tersedia:*\n` +
+      `/start - Mulai bot\n` +
+      `/help - Bantuan\n` +
+      `/hari_ini - Laporan hari ini\n` +
+      `/bulan_ini - Laporan bulan ini\n\n` +
+      `Ayo mulai catat keuangan Anda! 💰`,
       { parse_mode: 'Markdown' }
     )
   })
 
   bot.command('help', async (ctx) => {
+    console.log('Help command from:', ctx.from?.id)
+    
     await ctx.reply(
-      `📖 *Bantuan*\n\n` +
-      `*Contoh input:*\n` +
+      `📖 *Bantuan CatatUang*\n\n` +
+      `*Input Transaksi:*\n` +
+      `Kirim pesan dengan format natural:\n` +
       `- "Beli kopi 25rb"\n` +
-      `- "Gaji 15 juta"\n` +
-      `- "Transfer 500k BCA ke GoPay"\n\n` +
+      `- "Gaji masuk 15 juta"\n` +
+      `- "Transfer 500k dari BCA ke GoPay"\n\n` +
+      `*Commands:*\n` +
+      `/start - Mulai bot\n` +
+      `/help - Tampilkan bantuan ini\n` +
+      `/hari_ini - Ringkasan hari ini\n` +
+      `/minggu_ini - Ringkasan minggu ini\n` +
+      `/bulan_ini - Ringkasan bulan ini\n` +
+      `/export - Export laporan PDF/XLSX\n\n` +
       `*Tips:*\n` +
-      `- Bahasa Indonesia santai\n` +
-      `- Sebut nominal (50rb, 100k)\n` +
-      `- Sebut dompet (gopay, bca)\n`,
+      `- Gunakan bahasa Indonesia santai\n` +
+      `- Sebutkan nominal (50rb, 100k, 1jt)\n` +
+      `- Sebutkan dompet (gopay, ovo, bca, cash)\n\n` +
+      `Butuh bantuan lain? Hubungi @eascreative`,
       { parse_mode: 'Markdown' }
     )
   })
@@ -107,13 +121,16 @@ export function setupBotHandlers() {
         else console.log('Confirmation saved with txId:', txId)
       }
 
-      const confirmationText = 
-        `✅ *Konfirmasi*\n\n` +
-        `*Type:* ${parsed.type}\n` +
-        `*Amount:* ${amount}\n` +
-        `*Desc:* ${parsed.description}\n` +
-        `*Category:* ${parsed.category || 'Umum'}\n` +
-        `*Wallet:* ${parsed.wallet || 'Cash'}`
+      let confirmationText = `✅ *Konfirmasi Transaksi*\n\n`
+      confirmationText += `*Jenis:* ${parsed.type === 'income' ? 'Pemasukan' : parsed.type === 'expense' ? 'Pengeluaran' : 'Transfer'}\n`
+      confirmationText += `*Jumlah:* ${amount}\n`
+      confirmationText += `*Keterangan:* ${parsed.description}\n`
+      confirmationText += `*Kategori:* ${parsed.category || 'Umum'}\n`
+      confirmationText += `*Dompet:* ${parsed.wallet || 'Cash'}\n\n`
+
+      if (parsed.clarification_needed) {
+        confirmationText += `⚠️ _Saya kurang yakin. Mohon konfirmasi detail transaksi._`
+      }
 
       await ctx.reply(confirmationText, {
         parse_mode: 'Markdown',
@@ -127,7 +144,7 @@ export function setupBotHandlers() {
       console.log('Confirmation sent')
     } catch (error: any) {
       console.error('Message error:', error)
-      await ctx.reply('❌ Terjadi kesalahan')
+      await ctx.reply('❌ Terjadi kesalahan. Silakan coba lagi.')
     }
   })
 
@@ -136,7 +153,7 @@ export function setupBotHandlers() {
     console.log('Callback:', action, txId, 'from:', ctx.from?.id)
 
     if (!supabase) {
-      await ctx.answerCallbackQuery({ show_alert: true, text: 'Database not configured' })
+      await ctx.answerCallbackQuery({ show_alert: true, text: 'Database belum dikonfigurasi' })
       return
     }
 
@@ -155,14 +172,14 @@ export function setupBotHandlers() {
 
     if (fetchError || !confirmations) {
       console.error('Confirmation not found:', fetchError)
-      await ctx.answerCallbackQuery({ show_alert: true, text: 'Transaksi expired' })
+      await ctx.answerCallbackQuery({ show_alert: true, text: 'Transaksi sudah expired atau tidak ditemukan' })
       return
     }
 
     if (action === 'cancel') {
       await supabase.from('ai_confirmations').update({ status: 'rejected' }).eq('id', confirmations.id)
       await ctx.answerCallbackQuery()
-      await ctx.editMessageText('❌ Dibatalkan')
+      await ctx.editMessageText('❌ Transaksi dibatalkan')
       console.log('Transaction cancelled')
       return
     }
@@ -191,11 +208,11 @@ export function setupBotHandlers() {
         
         console.log('Transaction created:', transaction)
         await ctx.answerCallbackQuery()
-        await ctx.editMessageText('✅ Tersimpan di database!')
+        await ctx.editMessageText('✅ Transaksi berhasil disimpan!\n\nTransaksi sudah masuk ke database.')
       } catch (error: any) {
         console.error('Save error:', error)
         await ctx.answerCallbackQuery({ show_alert: true })
-        await ctx.editMessageText('❌ Error: ' + error.message)
+        await ctx.editMessageText('❌ Error saat menyimpan: ' + error.message)
       }
     }
   })
