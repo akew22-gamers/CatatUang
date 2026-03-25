@@ -18,6 +18,9 @@ export const bot = new Bot(token || 'DUMMY', {
   },
 })
 
+// Temporary storage for pending transactions (in production, use Redis/DB)
+const pendingTransactions = new Map<string, any>()
+
 export function setupBotHandlers() {
   if (!token) {
     console.error('Cannot setup handlers: TELEGRAM_BOT_TOKEN missing')
@@ -82,24 +85,32 @@ export function setupBotHandlers() {
 
       const parsed = result.data
       const amount = parsed.amount ? `Rp ${parsed.amount.toLocaleString('id-ID')}` : '❓'
+      
+      // Generate short ID for this transaction
+      const txId = Math.random().toString(36).substring(2, 8)
+      pendingTransactions.set(txId, { ...parsed, userId: ctx.from?.id })
+      
+      // Clean up old transactions after 5 minutes
+      setTimeout(() => pendingTransactions.delete(txId), 5 * 60 * 1000)
 
-      await ctx.reply(
+      const confirmationText = 
         `✅ *Konfirmasi*\n\n` +
         `*Type:* ${parsed.type}\n` +
         `*Amount:* ${amount}\n` +
         `*Desc:* ${parsed.description}\n` +
         `*Category:* ${parsed.category || 'Umum'}\n` +
-        `*Wallet:* ${parsed.wallet || 'Cash'}\n`,
-        {
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [[
-              { text: '✅ Simpan', callback_data: `confirm_${Buffer.from(JSON.stringify(parsed)).toString('base64')}` },
-              { text: '❌ Batal', callback_data: 'cancel' },
-            ]],
-          },
-        }
-      )
+        `*Wallet:* ${parsed.wallet || 'Cash'}`
+
+      await ctx.reply(confirmationText, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '✅ Simpan', callback_data: `save_${txId}` },
+            { text: '❌ Batal', callback_data: `cancel_${txId}` },
+          ]],
+        },
+      })
+      console.log('Confirmation sent with txId:', txId)
     } catch (error: any) {
       console.error('Message error:', error)
       await ctx.reply('❌ Terjadi kesalahan')
@@ -107,23 +118,39 @@ export function setupBotHandlers() {
   })
 
   bot.on('callback_query:data', async (ctx) => {
-    const data = ctx.callbackQuery.data
-    console.log('Callback:', data, 'from:', ctx.from?.id)
+    const [action, txId] = ctx.callbackQuery.data.split('_')
+    console.log('Callback:', action, txId, 'from:', ctx.from?.id)
 
-    if (data === 'cancel') {
-      await ctx.answerCallbackQuery()
-      await ctx.editMessageText('❌ Dibatalkan')
+    const transaction = pendingTransactions.get(txId)
+
+    if (!transaction) {
+      await ctx.answerCallbackQuery({ 
+        show_alert: true, 
+        text: 'Transaksi sudah expired atau tidak ditemukan' 
+      })
       return
     }
 
-    if (data.startsWith('confirm_')) {
+    if (action === 'cancel') {
+      pendingTransactions.delete(txId)
+      await ctx.answerCallbackQuery()
+      await ctx.editMessageText('❌ Transaksi dibatalkan')
+      console.log('Transaction cancelled:', txId)
+      return
+    }
+
+    if (action === 'save') {
       try {
+        // TODO: Save to database
+        console.log('Transaction saved:', transaction)
+        
+        pendingTransactions.delete(txId)
         await ctx.answerCallbackQuery()
-        await ctx.editMessageText('✅ Tersimpan!\n\n_Note: DB integration akan disusukan_')
+        await ctx.editMessageText('✅ Transaksi berhasil disimpan!\n\n_Note: DB integration akan disusukan_')
       } catch (error: any) {
-        console.error('Callback error:', error)
+        console.error('Save error:', error)
         await ctx.answerCallbackQuery({ show_alert: true })
-        await ctx.editMessageText('❌ Error')
+        await ctx.editMessageText('❌ Error saat menyimpan')
       }
     }
   })
