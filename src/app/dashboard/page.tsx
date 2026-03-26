@@ -36,16 +36,26 @@ export default function ChatPage() {
   const loadWallets = async () => {
     try {
       const { data } = await fetch('/api/auth/user').then(r => r.json())
-      if (!data?.user) return
+      if (!data?.user) {
+        console.log('No user found')
+        return
+      }
       
       const supabase = createClient()
-      const { data: walletData } = await supabase
+      const { data: walletData, error } = await supabase
         .from('wallets')
         .select('name')
         .eq('group_id', 1)
         .order('name')
       
-      setWallets(walletData?.map(w => w.name) || [])
+      if (error) {
+        console.error('Error fetching wallets:', error)
+        return
+      }
+      
+      const walletNames = walletData?.map(w => w.name) || []
+      console.log('Loaded wallets:', walletNames)
+      setWallets(walletNames)
     } catch (error) {
       console.error('Error loading wallets:', error)
     }
@@ -251,22 +261,26 @@ export default function ChatPage() {
                   <span className="text-muted-foreground">Dompet:</span>
                   <span>{tx.dompet || '❌ Belum dipilih'}</span>
                 </div>
-                {!tx.dompet && wallets.length > 0 && (
-                  <div className="space-y-2 pt-2">
-                    <p className="text-xs text-muted-foreground">Pilih dompet:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {wallets.map((wallet) => (
-                        <Button
-                          key={wallet}
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleWalletSelect(wallet, messageIndex)}
-                          className="text-xs"
-                        >
-                          💳 {wallet}
-                        </Button>
-                      ))}
-                    </div>
+                {!tx.dompet && (
+                  <div className="space-y-2 pt-2 border-t mt-2">
+                    <p className="text-xs font-semibold text-muted-foreground">Pilih dompet:</p>
+                    {wallets.length === 0 ? (
+                      <p className="text-xs text-amber-600">⚠️ Belum ada dompet. Silakan tambah dompet di menu Pengaturan.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {wallets.map((wallet) => (
+                          <Button
+                            key={wallet}
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleWalletSelect(wallet, messageIndex)}
+                            className="text-xs h-8"
+                          >
+                            💳 {wallet}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
