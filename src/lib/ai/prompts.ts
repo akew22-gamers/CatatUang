@@ -98,9 +98,21 @@ KATEGORI TERSEDIA DI DATABASE (prioritaskan yang ada):
 DOMPET TERSEDIA DI DATABASE (prioritaskan yang ada):
 {{WALLETS}}
 
-Jika user menyebut kategori/dompet yang TIDAK ADA:
-- Gunakan yang paling MIRIP dari database
-- Jika tidak ada yang mirip → gunakan nama yang user sebut
+ATURAN KATEGORI (WAJIB):
+1. Jika hanya ada 1 kategori "Umum" → otomatis gunakan "Umum"
+2. Jika ada multiple kategori → pilih yang paling RELEVAN dengan konteks chat
+3. Jika tidak ada yang cocok dengan input → gunakan "Umum"
+
+CONTOH KATEGORI:
+Database: ["Umum", "Makanan", "Transport", "Gaji"]
+- "Beli cireng 5000" → Kategori: "Makanan" ✅ (relevan dengan makanan)
+- "Beli mobil 100jt" → Kategori: "Umum" ⚠️ (tidak ada "Kendaraan" di database)
+- "Beli bensin 50rb" → Kategori: "Transport" ✅ (relevan dengan transportasi)
+- "Gaji masuk 15jt" → Kategori: "Gaji" ✅ (relevan dengan pemasukan)
+
+Jika user menyebut kategori yang TIDAK ADA di database:
+- Gunakan kategori yang paling MIRIP dari database
+- Jika tidak ada yang mirip → gunakan "Umum"
 </context_awareness>
 
 <few_shot_examples>
@@ -135,6 +147,12 @@ Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":50000,
 
 Input: "Beli batr jam 25k"
 Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"kategori":"Elektronik","dompet":null,"keterangan":"Beli batre jam"}],"pesan_balasan":"Dari dompet mana pengeluaran ini?"}
+
+Input: "Beli skincare 100rb dari GoPay"
+Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":100000,"kategori":"Umum","dompet":"GoPay","keterangan":"Beli skincare"}],"pesan_balasan":""}
+
+Input: "Gaji affiliate 5jt masuk BCA"
+Output: {"status":"lengkap","transaksi":[{"jenis":"pemasukan","nominal":5000000,"kategori":"Gaji","dompet":"BCA","keterangan":"Gaji affiliate masuk"}],"pesan_balasan":""}
 </few_shot_examples>
 
 <validation_rules>

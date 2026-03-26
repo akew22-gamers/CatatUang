@@ -13,6 +13,7 @@ export interface ParsedTransaction {
   kategori: string | 'Umum' | null
   dompet: string | null
   keterangan: string
+  category_needs_selection?: boolean
 }
 
 export interface ParseResult {
@@ -47,6 +48,48 @@ function validateParseResult(result: any): ParseResult {
   }
   
   return result as ParseResult
+}
+
+function normalizeAndValidateCategory(
+  aiPickedCategory: string | null,
+  availableCategories: string[]
+): { category: string; needsSelection: boolean } {
+  if (!aiPickedCategory || aiPickedCategory.trim() === '') {
+    return { category: 'Umum', needsSelection: false }
+  }
+  
+  const hasOnlyUmum = availableCategories.length === 1 && 
+                     availableCategories[0].toLowerCase() === 'umum'
+  
+  if (hasOnlyUmum) {
+    return { category: 'Umum', needsSelection: false }
+  }
+  
+  const normalizedCategories = availableCategories.map(c => c.toLowerCase().trim())
+  const normalizedAiCategory = aiPickedCategory.toLowerCase().trim()
+  
+  const categoryIndex = normalizedCategories.indexOf(normalizedAiCategory)
+  
+  if (categoryIndex !== -1) {
+    return { 
+      category: availableCategories[categoryIndex], 
+      needsSelection: false 
+    }
+  }
+  
+  const similarCategory = normalizedCategories.find(c => 
+    c.includes(normalizedAiCategory) || normalizedAiCategory.includes(c)
+  )
+  
+  if (similarCategory) {
+    const index = normalizedCategories.indexOf(similarCategory)
+    return { 
+      category: availableCategories[index], 
+      needsSelection: false 
+    }
+  }
+  
+  return { category: 'Umum', needsSelection: true }
 }
 
 export async function parseFinancialChat(
@@ -95,10 +138,18 @@ export async function parseFinancialChat(
     const parsed = JSON.parse(content)
     const validated = validateParseResult(parsed)
     
-    validated.transaksi = validated.transaksi.map(tx => ({
-      ...tx,
-      kategori: tx.kategori || 'Umum',
-    }))
+    validated.transaksi = validated.transaksi.map(tx => {
+      const { category, needsSelection } = normalizeAndValidateCategory(
+        tx.kategori,
+        context.categories
+      )
+      
+      return {
+        ...tx,
+        kategori: category,
+        category_needs_selection: needsSelection,
+      }
+    })
 
     console.log('Validated result:', validated)
     return validated
@@ -114,9 +165,12 @@ function mockParseFinancialChat(
 ): ParseResult {
   const lowerMessage = message.toLowerCase()
   
-  const isIncome = lowerMessage.includes('gaji') || lowerMessage.includes('terima') || lowerMessage.includes('masuk') || lowerMessage.includes('affiliate')
-  const isReport = lowerMessage.includes('rekap') || lowerMessage.includes('laporan') || lowerMessage.includes('berapa')
-  const isGreeting = lowerMessage.includes('halo') || lowerMessage.includes('hai') || lowerMessage.includes('test')
+  const isIncome = lowerMessage.includes('gaji') || lowerMessage.includes('terima') || 
+                   lowerMessage.includes('masuk') || lowerMessage.includes('affiliate')
+  const isReport = lowerMessage.includes('rekap') || lowerMessage.includes('laporan') || 
+                   lowerMessage.includes('berapa')
+  const isGreeting = lowerMessage.includes('halo') || lowerMessage.includes('hai') || 
+                     lowerMessage.includes('test')
   
   if (isGreeting) {
     return {
@@ -151,20 +205,48 @@ function mockParseFinancialChat(
   }
   
   let kategori: string | null = 'Umum'
-  if (lowerMessage.includes('makan') || lowerMessage.includes('kopi') || lowerMessage.includes('bakso') || lowerMessage.includes('jajan')) {
+  if (lowerMessage.includes('makan') || lowerMessage.includes('kopi') || 
+      lowerMessage.includes('bakso') || lowerMessage.includes('jajan') ||
+      lowerMessage.includes('cireng')) {
     kategori = 'Makanan'
-  } else if (lowerMessage.includes('bensin') || lowerMessage.includes('transport')) {
+  } else if (lowerMessage.includes('bensin') || lowerMessage.includes('transport') || 
+             lowerMessage.includes('ojek') || lowerMessage.includes('grab')) {
     kategori = 'Transport'
-  } else if (lowerMessage.includes('gaji') || lowerMessage.includes('affiliate')) {
-    kategori = context.categories.find(c => c.toLowerCase().includes('gaji') || c.toLowerCase().includes('affiliate')) || 'Umum'
+  } else if (lowerMessage.includes('gaji') || lowerMessage.includes('affiliate') || 
+             lowerMessage.includes('bonus') || lowerMessage.includes('komisi')) {
+    kategori = 'Gaji'
+  } else if (lowerMessage.includes('skincare') || lowerMessage.includes('kosmetik') || 
+             lowerMessage.includes('kecantikan')) {
+    kategori = 'Kecantikan'
+  } else if (lowerMessage.includes('batr') || lowerMessage.includes('elektronik') || 
+             lowerMessage.includes('gadget')) {
+    kategori = 'Elektronik'
   }
   
-  // IMPORTANT: DO NOT auto-fill dompet! Set to null if not specified
-  const dompet: string | null = null
+  const { category, needsSelection } = normalizeAndValidateCategory(kategori, context.categories)
+  kategori = category
   
-  // If wallet not specified, status MUST be kurang_data
-  const needsWallet = true // Always require wallet selection
+  const needsWallet = true
   const needsNominal = nominal === null
+  
+  let pesanBalasan = ''
+  if (needsWallet) {
+    pesanBalasan = `Dari dompet mana ${isIncome ? 'pemasukan' : 'pengeluaran'} ini?`
+  } else if (needsNominal) {
+    pesanBalasan = 'Berapa nominalnya?'
+  }
+  
+  if (needsSelection && context.categories.length > 1) {
+    const catList = context.categories.filter(c => c !== 'Umum').join(', ')
+    if (pesanBalasan) {
+      pesanBalasan += ` Kategori tersedia: ${catList}`
+    } else {
+      pesanBalasan = `Kategori tersedia: ${catList}`
+    }
+    if (pesanBalasan) {
+      pesanBalasan += '.'
+    }
+  }
   
   return {
     status: needsWallet || needsNominal ? 'kurang_data' : 'lengkap',
@@ -172,13 +254,10 @@ function mockParseFinancialChat(
       jenis: isIncome ? 'pemasukan' : 'pengeluaran',
       nominal,
       kategori,
-      dompet, // null - user must select
+      dompet: null,
       keterangan: message,
+      category_needs_selection: needsSelection,
     }],
-    pesan_balasan: needsWallet 
-      ? `Dari dompet mana ${isIncome ? 'pemasukan' : 'pengeluaran'} ini?`
-      : needsNominal
-        ? 'Berapa nominalnya?'
-        : '',
+    pesan_balasan: pesanBalasan,
   }
 }
