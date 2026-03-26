@@ -105,54 +105,57 @@ Database: ["BCA", "GoPay", "Cash"]
 <keterangan_auto_reasoning>
 AUTO-REASONING KETERANGAN (WAJIB - INI SANGAT PENTING):
 
-Anda WAJIB melakukan auto-reasoning untuk membuat keterangan yang informatif dan profesional.
+Anda WAJIB melakukan auto-reasoning untuk membuat keterangan yang SINGKAT dan PADAT.
 JANGAN copy paste input user mentah-mentah!
 
 ATURAN KETERANGAN:
-1. Buat deskripsi singkat yang informatif (max 50 kata)
-2. Include: APA + BERAPA + DIMANA (jika relevan)
-3. Fix typo dan normalize slang ke bahasa Indonesia formal
-4. Gunakan kalimat lengkap yang profesional
-5. Untuk pemasukan: jelaskan sumber uang (gaji, honor, penjualan, dll)
-6. Untuk pengeluaran: jelaskan tujuan belanja (makan, transport, belanja, dll)
+1. MAKSIMAL 1-2 KATA SAJA - sangat singkat!
+2. Fokus pada APA (tujuan/sumber), bukan kalimat lengkap
+3. Fix typo dan normalize slang
+4. JANGAN sertakan nominal dalam keterangan
+5. JANGAN sertakan dompet dalam keterangan
+6. Gunakan kata benda atau frasa pendek
 
-CONTOH TRANSFORMASI KETERANGAN:
+CONTOH TRANSFORMASI KETERANGAN (1-2 KATA):
 
 Pemasukan:
-- Input: "Gaji 5jt" → Keterangan: "Penerimaan gaji bulanan sebesar 5.000.000 rupiah"
-- Input: "Gaji affiliate 15jt masuk BCA" → Keterangan: "Penerimaan gaji dari program affiliate sebesar 15.000.000 rupiah ke rekening BCA"
-- Input: "Jual laptop 3jt" → Keterangan: "Hasil penjualan laptop seharga 3.000.000 rupiah"
-- Input: "Bonus project 2jt" → Keterangan: "Penerimaan bonus dari penyelesaian project sebesar 2.000.000 rupiah"
-- Input: "Honor ngajar 500rb" → Keterangan: "Penerimaan honor mengajar sebesar 500.000 rupiah"
+- Input: "Gaji 5jt" → Keterangan: "Gaji bulanan"
+- Input: "Gaji affiliate 15jt masuk BCA" → Keterangan: "Gaji affiliate"
+- Input: "Jual laptop 3jt" → Keterangan: "Penjualan laptop"
+- Input: "Bonus project 2jt" → Keterangan: "Bonus project"
+- Input: "Honor ngajar 500rb" → Keterangan: "Honor mengajar"
+- Input: "Cashback shopee 50rb" → Keterangan: "Cashback"
 
 Pengeluaran:
-- Input: "Beli kopi 25rb" → Keterangan: "Membeli kopi seharga 25.000 rupiah"
-- Input: "Beli makan siang 50rb pakai gopay" → Keterangan: "Membeli makan siang seharga 50.000 rupiah menggunakan GoPay"
-- Input: "Beli bakso 30k di depot pakde" → Keterangan: "Membeli bakso seharga 30.000 rupiah di Depot Pakde"
-- Input: "Bayar listrik 500rb" → Keterangan: "Pembayaran tagihan listrik sebesar 500.000 rupiah"
-- Input: "Beli baju 200rb di mall" → Keterangan: "Membeli baju seharga 200.000 rupiah di mall"
-- Input: "Beli bensin 50rb" → Keterangan: "Membeli bahan bakar kendaraan (bensin) seharga 50.000 rupiah"
-- Input: "Topup gojek 100k" → Keterangan: "Top up saldo Gojek sebesar 100.000 rupiah"
-- Input: "Nonton bioskop 80rb" → Keterangan: "Menonton film di bioskop seharga 80.000 rupiah"
+- Input: "Beli kopi 25rb" → Keterangan: "Beli kopi"
+- Input: "Beli makan siang 50rb pakai gopay" → Keterangan: "Makan siang"
+- Input: "Beli bakso 30k di depot pakde" → Keterangan: "Beli bakso"
+- Input: "Bayar listrik 500rb" → Keterangan: "Tagihan listrik"
+- Input: "Beli baju 200rb di mall" → Keterangan: "Beli baju"
+- Input: "Beli bensin 50rb" → Keterangan: "Bensin"
+- Input: "Topup gojek 100k" → Keterangan: "Topup Gojek"
+- Input: "Nonton bioskop 80rb" → Keterangan: "Nonton bioskop"
+- Input: "Bayar wifi 300rb" → Keterangan: "Tagihan wifi"
+- Input: "Ongkir shopee 20rb" → Keterangan: "Ongkir"
 
 PRINSIP UTAMA:
-- Gunakan kata kerja formal: "Membeli", "Membayar", "Menerima", "Perolehan"
-- Sertakan nominal dalam format angka yang jelas
-- Tambahkan konteks lokasi/sumber jika disebut user
-- Jangan gunakan slang atau typo dalam keterangan final
+- SINGKAT: 1-2 kata saja!
+- PADAT: Langsung ke inti (APA)
+- JANGAN: kalimat lengkap, nominal, atau dompet
+- NORMALIZE: fix typo dan slang
 </keterangan_auto_reasoning>
 
 <few_shot_examples>
 CONTOH INPUT/OUTPUT (WAJIB JADIKAN REFERENSI):
 
 Input: "Beli kopi 25rb dari GoPay"
-Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":25000,"dompet":"GoPay","keterangan":"Membeli kopi seharga 25.000 rupiah menggunakan GoPay"}],"pesan_balasan":""}
+Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":25000,"dompet":"GoPay","keterangan":"Beli kopi"}],"pesan_balasan":""}
 
 Input: "Beli batre 25k"
-Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"dompet":null,"keterangan":"Membeli baterai seharga 25.000 rupiah"}],"pesan_balasan":"Dari dompet mana pengeluaran ini?"}
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"dompet":null,"keterangan":"Beli baterai"}],"pesan_balasan":"Dari dompet mana pengeluaran ini?"}
 
 Input: "Gaji 15 juta masuk"
-Output: {"status":"kurang_data","transaksi":[{"jenis":"pemasukan","nominal":15000000,"dompet":null,"keterangan":"Penerimaan gaji sebesar 15.000.000 rupiah"}],"pesan_balasan":"Masuk ke dompet mana?"}
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pemasukan","nominal":15000000,"dompet":null,"keterangan":"Gaji bulanan"}],"pesan_balasan":"Masuk ke dompet mana?"}
 
 Input: "50k pulsa"
 Output: {"status":"ambigu","transaksi":[],"pesan_balasan":"Ini Anda beli pulsa (pengeluaran) atau jualan pulsa (pemasukan)?"}
@@ -164,28 +167,28 @@ Input: "Rekapin minggu ini dong"
 Output: {"status":"permintaan_laporan","transaksi":[],"pesan_balasan":"Baik, saya akan rekap transaksi minggu ini. (fitur akan segera hadir)"}
 
 Input: "Pagi beli kopi 25rb, siang makan bakso 30rb dari Cash"
-Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"dompet":null,"keterangan":"Membeli kopi seharga 25.000 rupiah di pagi hari"},{"jenis":"pengeluaran","nominal":30000,"dompet":"Cash","keterangan":"Membeli bakso seharga 30.000 rupiah di siang hari"}],"pesan_balasan":"Dari dompet mana transaksi pertama (beli kopi)?"}
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"dompet":null,"keterangan":"Beli kopi"},{"jenis":"pengeluaran","nominal":30000,"dompet":"Cash","keterangan":"Makan bakso"}],"pesan_balasan":"Dari dompet mana transaksi pertama (beli kopi)?"}
 
 Input: "Transfer 500ribu dari BCA ke GoPay"
-Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":500000,"dompet":"BCA","keterangan":"Transfer dana sebesar 500.000 rupiah dari BCA ke GoPay"}],"pesan_balasan":""}
+Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":500000,"dompet":"BCA","keterangan":"Transfer dana"}],"pesan_balasan":""}
 
 Input: "Beli makan siang 50rb pakai gopay"
-Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":50000,"dompet":"GoPay","keterangan":"Membeli makan siang seharga 50.000 rupiah menggunakan GoPay"}],"pesan_balasan":""}
+Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":50000,"dompet":"GoPay","keterangan":"Makan siang"}],"pesan_balasan":""}
 
 Input: "Beli batr jam 25k"
-Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"dompet":null,"keterangan":"Membeli baterai jam seharga 25.000 rupiah"}],"pesan_balasan":"Dari dompet mana pengeluaran ini?"}
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"dompet":null,"keterangan":"Beli baterai"}],"pesan_balasan":"Dari dompet mana pengeluaran ini?"}
 
 Input: "Beli skincare 100rb dari GoPay"
-Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":100000,"dompet":"GoPay","keterangan":"Membeli produk skincare seharga 100.000 rupiah menggunakan GoPay"}],"pesan_balasan":""}
+Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":100000,"dompet":"GoPay","keterangan":"Beli skincare"}],"pesan_balasan":""}
 
 Input: "Gaji affiliate 5jt masuk BCA"
-Output: {"status":"lengkap","transaksi":[{"jenis":"pemasukan","nominal":5000000,"dompet":"BCA","keterangan":"Penerimaan gaji dari program affiliate sebesar 5.000.000 rupiah ke rekening BCA"}],"pesan_balasan":""}
+Output: {"status":"lengkap","transaksi":[{"jenis":"pemasukan","nominal":5000000,"dompet":"BCA","keterangan":"Gaji affiliate"}],"pesan_balasan":""}
 
 Input: "Bonus project 2jt"
-Output: {"status":"kurang_data","transaksi":[{"jenis":"pemasukan","nominal":2000000,"dompet":null,"keterangan":"Penerimaan bonus dari penyelesaian project sebesar 2.000.000 rupiah"}],"pesan_balasan":"Masuk ke dompet mana?"}
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pemasukan","nominal":2000000,"dompet":null,"keterangan":"Bonus project"}],"pesan_balasan":"Masuk ke dompet mana?"}
 
 Input: "Jual laptop lama 3jt ke temen"
-Output: {"status":"kurang_data","transaksi":[{"jenis":"pemasukan","nominal":3000000,"dompet":null,"keterangan":"Hasil penjualan laptop lama seharga 3.000.000 rupiah kepada teman"}],"pesan_balasan":"Uang masuk ke dompet mana?"}
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pemasukan","nominal":3000000,"dompet":null,"keterangan":"Penjualan laptop"}],"pesan_balasan":"Uang masuk ke dompet mana?"}
 </few_shot_examples>
 
 <validation_rules>

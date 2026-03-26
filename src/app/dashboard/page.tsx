@@ -20,6 +20,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [wallets, setWallets] = useState<string[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -27,8 +28,29 @@ export default function ChatPage() {
   }
 
   useEffect(() => {
+    loadWallets()
     scrollToBottom()
   }, [messages])
+
+  const loadWallets = async () => {
+    try {
+      const { data } = await fetch('/api/auth/user').then(r => r.json())
+      if (!data?.user) return
+      
+      // Fetch from Supabase directly
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data: walletData } = await supabase
+        .from('wallets')
+        .select('name')
+        .eq('group_id', 1)
+        .order('name')
+      
+      setWallets(walletData?.map(w => w.name) || [])
+    } catch (error) {
+      console.error('Error loading wallets:', error)
+    }
+  }
 
   const formatText = (text: string) => {
     return text.split('\n').map((line, i) => (
@@ -99,6 +121,20 @@ export default function ChatPage() {
       ),
       timestamp: new Date(),
     }])
+  }
+
+  const handleWalletSelect = async (walletName: string, messageIndex: number) => {
+    setMessages(prev => {
+      const newMessages = [...prev]
+      const msg = newMessages[messageIndex]
+      if (msg && msg.data) {
+        for (const tx of msg.data.transaksi) {
+          tx.dompet = walletName
+        }
+        msg.data.status = 'lengkap'
+      }
+      return newMessages
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -175,13 +211,38 @@ export default function ChatPage() {
         )
         showButtons = true
       } else if (parsed.status === 'kurang_data') {
+        const tx = parsed.transaksi[0]
         content = (
-          <div className="flex items-start gap-2 text-amber-600">
-            <AlertCircle className="h-5 w-5 mt-0.5" />
-            <div>
-              <span className="font-semibold">Data Belum Lengkap</span>
-              <p className="text-sm mt-1">{parsed.pesan_balasan}</p>
+          <div className="space-y-3">
+            <div className="flex items-start gap-2 text-amber-600">
+              <AlertCircle className="h-5 w-5 mt-0.5" />
+              <div>
+                <span className="font-semibold">Data Belum Lengkap</span>
+                <p className="text-sm mt-1">{parsed.pesan_balasan}</p>
+              </div>
             </div>
+            {tx && (
+              <div className="grid gap-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Jenis:</span>
+                  <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'}>
+                    {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Jumlah:</span>
+                  <span className="font-semibold">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Keterangan:</span>
+                  <span>{tx.keterangan}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Dompet:</span>
+                  <span>{tx.dompet || '❌ Belum dipilih'}</span>
+                </div>
+              </div>
+            )}
           </div>
         )
       } else if (parsed.status === 'ambigu') {
