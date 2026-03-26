@@ -4,13 +4,16 @@ import { useState, useRef, useEffect } from 'react'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Card } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Badge } from '@/components/ui/badge'
+import { CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
   data?: any
+  timestamp: Date
 }
 
 export default function ChatPage() {
@@ -27,6 +30,50 @@ export default function ChatPage() {
     scrollToBottom()
   }, [messages])
 
+  const formatText = (text: string) => {
+    // Convert **text** to proper HTML bold
+    return text.split('\n').map((line, i) => (
+      <p key={i} className="min-h-[1.5rem]">
+        {line.split(/(\*\*.*?\*\*)/).map((part, j) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={j} className="font-semibold">{part.slice(2, -2)}</strong>
+          }
+          return part
+        })}
+      </p>
+    ))
+  }
+
+  const handleSave = async (data: any) => {
+    try {
+      const response = await fetch('/api/confirmations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: 'user-id', // Get from auth
+          group_id: 1,
+          original_message: messages[messages.length - 2]?.content,
+          parsed_data: data,
+        }),
+      })
+
+      const result = await response.json()
+      if (result.error) throw new Error(result.error)
+
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '✅ Transaksi berhasil disimpan!',
+        timestamp: new Date(),
+      }])
+    } catch (error: any) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `❌ Error: ${error.message}`,
+        timestamp: new Date(),
+      }])
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || loading) return
@@ -34,7 +81,11 @@ export default function ChatPage() {
     const userMessage = input.trim()
     setInput('')
     setLoading(true)
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }])
+    setMessages(prev => [...prev, { 
+      role: 'user', 
+      content: userMessage,
+      timestamp: new Date()
+    }])
 
     try {
       const response = await fetch('/api/parse-transaction', {
@@ -46,85 +97,186 @@ export default function ChatPage() {
       const result = await response.json()
 
       if (result.error) {
-        setMessages(prev => [...prev, { role: 'assistant', content: `❌ Error: ${result.error}` }])
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: `❌ Error: ${result.error}`,
+          timestamp: new Date()
+        }])
         return
       }
 
       const parsed = result.data
       
-      let botMessage = ''
+      // Render message based on status
+      let content = ''
+      let showButtons = false
+      
       if (parsed.status === 'lengkap') {
-        botMessage = `✅ **Transaksi Siap Disimpan**\n\n`
-        botMessage += `**Jenis:** ${parsed.transaksi[0].jenis === 'income' ? 'Pemasukan' : 'Pengeluaran'}\n`
-        botMessage += `**Jumlah:** Rp ${parsed.transaksi[0].nominal?.toLocaleString('id-ID')}\n`
-        botMessage += `**Keterangan:** ${parsed.transaksi[0].keterangan}\n`
-        botMessage += `**Kategori:** ${parsed.transaksi[0].kategori}\n`
-        botMessage += `**Dompet:** ${parsed.transaksi[0].dompet}\n\n`
-        botMessage += `Klik tombol di bawah untuk menyimpan.`
+        const tx = parsed.transaksi[0]
+        content = (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-green-600">
+              <CheckCircle2 className="h-5 w-5" />
+              <span className="font-semibold">Transaksi Siap Disimpan</span>
+            </div>
+            <div className="grid gap-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Jenis:</span>
+                <Badge variant={tx.jenis === 'income' ? 'default' : 'destructive'}>
+                  {tx.jenis === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+                </Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Jumlah:</span>
+                <span className="font-semibold">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Keterangan:</span>
+                <span>{tx.keterangan}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Kategori:</span>
+                <span>{tx.kategori}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Dompet:</span>
+                <span>{tx.dompet}</span>
+              </div>
+            </div>
+          </div>
+        )
+        showButtons = true
       } else if (parsed.status === 'kurang_data') {
-        botMessage = `⚠️ **Data Belum Lengkap**\n\n${parsed.pesan_balasan}`
+        content = (
+          <div className="flex items-start gap-2 text-amber-600">
+            <AlertCircle className="h-5 w-5 mt-0.5" />
+            <div>
+              <span className="font-semibold">Data Belum Lengkap</span>
+              <p className="text-sm mt-1">{parsed.pesan_balasan}</p>
+            </div>
+          </div>
+        )
       } else {
-        botMessage = parsed.pesan_balasan
+        content = (
+          <div className="text-sm">
+            {formatText(parsed.pesan_balasan)}
+          </div>
+        )
       }
 
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: botMessage,
-        data: parsed
+        content,
+        data: parsed,
+        timestamp: new Date()
       }])
     } catch (error: any) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `❌ Error: ${error.message}` }])
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: `❌ Error: ${error.message}`,
+        timestamp: new Date()
+      }])
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-background">
-      <div className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full">
-          <div className="p-4 space-y-4 max-w-4xl mx-auto">
-            {messages.length === 0 && (
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-bold mb-2">💬 CatatUang AI Assistant</h2>
-                <p className="text-muted-foreground mb-4">
-                  Catat transaksi dengan bahasa natural
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-gradient-to-br from-background to-muted/20">
+      {/* Messages Area */}
+      <ScrollArea className="flex-1">
+        <div className="p-4 space-y-4 max-w-4xl mx-auto">
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
+              <div className="space-y-2">
+                <div className="text-6xl mb-4">💬</div>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                  CatatUang AI Assistant
+                </h2>
+                <p className="text-muted-foreground text-lg">
+                  Catat transaksi keuangan dengan bahasa natural
                 </p>
-                <div className="text-sm text-muted-foreground space-y-2">
-                  <p><strong>Contoh:</strong></p>
-                  <p>• "Beli makan siang 50rb pakai gopay"</p>
-                  <p>• "Gaji masuk 15 juta ke BCA"</p>
-                  <p>• "Transfer 500k dari BCA ke GoPay"</p>
-                </div>
               </div>
-            )}
-            
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <Card className={`max-w-2xl p-4 ${
-                  msg.role === 'user' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-card'
-                }`}>
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                </Card>
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
-      </div>
+              
+              <Card className="w-full max-w-md border-muted bg-card/50 backdrop-blur-sm">
+                <CardContent className="pt-6 space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Contoh penggunaan:</p>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                        <span className="text-primary font-medium">•</span>
+                        <span className="text-muted-foreground">"Beli makan siang 50rb pakai gopay"</span>
+                      </div>
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                        <span className="text-primary font-medium">•</span>
+                        <span className="text-muted-foreground">"Gaji masuk 15 juta ke BCA"</span>
+                      </div>
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                        <span className="text-primary font-medium">•</span>
+                        <span className="text-muted-foreground">"Transfer 500k dari BCA ke GoPay"</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          
+          {messages.map((msg, i) => (
+            <div
+              key={i}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
+            >
+              <Card className={`max-w-2xl shadow-lg ${
+                msg.role === 'user' 
+                  ? 'bg-primary text-primary-foreground border-primary' 
+                  : 'bg-card border-muted'
+              }`}>
+                <CardContent className="p-4 space-y-3">
+                  {typeof msg.content === 'string' ? formatText(msg.content) : msg.content}
+                  
+                  {/* Action Buttons */}
+                  {msg.data?.status === 'lengkap' && (
+                    <div className="flex gap-2 pt-3 border-t">
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleSave(msg.data)}
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Simpan
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Batal
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Timestamp */}
+                  <div className={`text-xs ${msg.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                    {msg.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
 
-      <div className="border-t bg-background p-4">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-2">
+      {/* Input Area */}
+      <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-3">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ketik transaksi (contoh: Beli kopi 25rb dari GoPay)..."
-            className="flex-1 resize-none"
+            className="flex-1 resize-none min-h-[60px] focus:ring-2 focus:ring-primary/20"
             rows={2}
             disabled={loading}
             onKeyDown={(e) => {
@@ -138,7 +290,7 @@ export default function ChatPage() {
             type="submit" 
             size="lg"
             disabled={loading || !input.trim()}
-            className="px-6"
+            className="px-8 h-[60px] shadow-lg hover:shadow-xl transition-shadow"
           >
             <Send className="h-5 w-5" />
           </Button>
