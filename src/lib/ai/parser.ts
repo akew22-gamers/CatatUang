@@ -10,7 +10,6 @@ const GROQ_MODEL = 'llama-3.1-8b-instant'
 export interface ParsedTransaction {
   jenis: 'pemasukan' | 'pengeluaran'
   nominal: number | null
-  kategori: string | 'Umum' | null
   dompet: string | null
   keterangan: string
 }
@@ -22,7 +21,6 @@ export interface ParseResult {
 }
 
 export interface ParserContext {
-  categories: string[]
   wallets: string[]
   group_id?: number
 }
@@ -65,7 +63,7 @@ export async function parseFinancialChat(
     const emojis = extractEmojis(message)
     const emojiContext = extractContextFromEmojis(emojis)
     const preprocessedMessage = preprocessMessage(message)
-    const systemPrompt = buildPromptWithContext(context.categories, context.wallets)
+    const systemPrompt = buildPromptWithContext(context.wallets)
     
     const userMessage = emojiContext.length > 0
       ? `${preprocessedMessage}\n\nContext dari emoji: ${emojiContext.join(', ')}`
@@ -95,11 +93,6 @@ export async function parseFinancialChat(
     const parsed = JSON.parse(content)
     const validated = validateParseResult(parsed)
     
-    validated.transaksi = validated.transaksi.map(tx => ({
-      ...tx,
-      kategori: tx.kategori || 'Umum',
-    }))
-
     console.log('Validated result:', validated)
     return validated
   } catch (error: any) {
@@ -148,18 +141,6 @@ function mockParseFinancialChat(
     }
   }
   
-  let kategori: string | null = 'Umum'
-  if (lowerMessage.includes('makan') || lowerMessage.includes('kopi') || 
-      lowerMessage.includes('bakso') || lowerMessage.includes('jajan') ||
-      lowerMessage.includes('lunch') || lowerMessage.includes('dinner')) {
-    kategori = 'Makanan'
-  } else if (lowerMessage.includes('bensin') || lowerMessage.includes('transport') || 
-             lowerMessage.includes('ojek') || lowerMessage.includes('grab') || lowerMessage.includes('gojek')) {
-    kategori = 'Transport'
-  } else if (isIncome && (lowerMessage.includes('gaji') || lowerMessage.includes('affiliate'))) {
-    kategori = 'Gaji'
-  }
-  
   // Find wallet from message
   let dompet: string | null = null
   if (walletMentioned) {
@@ -182,7 +163,6 @@ function mockParseFinancialChat(
     transaksi: [{
       jenis: isIncome ? 'pemasukan' : 'pengeluaran',
       nominal,
-      kategori,
       dompet,
       keterangan: message,
     }],

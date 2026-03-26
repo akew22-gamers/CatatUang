@@ -11,7 +11,6 @@ export interface ReportSummary {
   totalExpense: number
   balance: number
   transactionCount: number
-  byCategory: Array<{ name: string; amount: number }>
   byWallet: Array<{ name: string; amount: number }>
 }
 
@@ -47,22 +46,6 @@ export async function getTransactionReport(
   
   const balance = totalIncome - totalExpense
   
-  // Group by category
-  const categoryMap = new Map<string, number>()
-  transactions.forEach(t => {
-    if (t.type === 'expense' && t.category_name) {
-      categoryMap.set(
-        t.category_name,
-        (categoryMap.get(t.category_name) || 0) + (t.amount || 0)
-      )
-    }
-  })
-  
-  const byCategory = Array.from(categoryMap.entries())
-    .map(([name, amount]) => ({ name, amount }))
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, 5) // Top 5
-  
   // Group by wallet
   const walletMap = new Map<string, number>()
   transactions
@@ -93,7 +76,6 @@ export async function getTransactionReport(
     totalExpense,
     balance,
     transactionCount: transactions.length,
-    byCategory,
     byWallet,
   }
 }

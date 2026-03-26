@@ -41,6 +41,7 @@ export interface Database {
           group_id: number
           created_by: string
           created_at: string
+          saldo: number | null
         }
       }
       categories: {
@@ -60,12 +61,13 @@ export interface Database {
           description: string
           transaction_date: string
           wallet_id: number | null
-          category_id: number | null
           from_wallet_id: number | null
           to_wallet_id: number | null
           created_by: string
           group_id: number
           created_at: string
+          wallet_name: string | null
+          telegram_user_id: string | null
         }
       }
       ai_confirmations: {

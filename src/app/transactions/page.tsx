@@ -12,7 +12,6 @@ interface Transaction {
   amount: number
   description: string
   wallet_name: string | null
-  category_name: string | null
   transaction_date: string
 }
 
@@ -34,7 +33,7 @@ export default function TransactionsPage() {
       let query = supabase
         .from('transactions')
         .select('*')
-        .eq('telegram_user_id', user.id)
+        .eq('created_by', user.id)
         .order('transaction_date', { ascending: false })
 
       if (filter !== 'all') {
@@ -121,7 +120,6 @@ export default function TransactionsPage() {
                     <div className="font-semibold">{tx.description}</div>
                     <div className="text-sm text-muted-foreground">
                       {tx.wallet_name && `${tx.wallet_name} • `}
-                      {tx.category_name}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {formatDate(tx.transaction_date)}

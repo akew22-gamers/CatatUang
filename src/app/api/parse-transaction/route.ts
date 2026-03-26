@@ -15,26 +15,17 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createClient()
-    const [{ data: catData }, { data: walletData }] = await Promise.all([
-      supabase
-        .from('categories')
-        .select('name')
-        .eq('group_id', group_id)
-        .order('name'),
-      supabase
-        .from('wallets')
-        .select('name')
-        .eq('group_id', group_id)
-        .order('name'),
-    ])
+    const { data: walletData } = await supabase
+      .from('wallets')
+      .select('name')
+      .eq('group_id', group_id)
+      .order('name')
 
-    const categories = catData?.map(c => c.name) || []
     const wallets = walletData?.map(w => w.name) || []
 
-    console.log('Database context:', { categories, wallets })
+    console.log('Database context:', { wallets })
 
     const result = await parseFinancialChat(message, {
-      categories,
       wallets,
       group_id,
     })

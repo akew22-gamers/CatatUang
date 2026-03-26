@@ -151,30 +151,26 @@ export default function ChatPage() {
               <CheckCircle2 className="h-5 w-5" />
               <span className="font-semibold">Transaksi Siap Disimpan</span>
             </div>
-            <div className="grid gap-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Jenis:</span>
-                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'}>
-                  {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
-                </Badge>
+              <div className="grid gap-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Jenis:</span>
+                  <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'}>
+                    {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Jumlah:</span>
+                  <span className="font-semibold">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Keterangan:</span>
+                  <span>{tx.keterangan}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Dompet:</span>
+                  <span>{tx.dompet || '❌ Belum dipilih'}</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Jumlah:</span>
-                <span className="font-semibold">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Keterangan:</span>
-                <span>{tx.keterangan}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Kategori:</span>
-                <span>{tx.kategori}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Dompet:</span>
-                <span>{tx.dompet || '❌ Belum dipilih'}</span>
-              </div>
-            </div>
           </div>
         )
         showButtons = true

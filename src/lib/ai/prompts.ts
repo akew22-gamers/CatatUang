@@ -12,7 +12,6 @@ WAJIB output HANYA JSON valid dengan schema ini (tanpa markdown, tanpa teks pemb
     {
       "jenis": "pemasukan" | "pengeluaran",
       "nominal": number | null,
-      "kategori": string | "Umum" | null,
       "dompet": string | null,
       "keterangan": string
     }
@@ -58,74 +57,102 @@ ATURAN KHUSUS (WAJIB):
    - Jika income dan dompet tidak disebut → dompet: null, status: "kurang_data"
    - pesan_balasan: tanya masuk ke dompet mana
 
-3. KATEGORI KOSONG:
-   - Jika kategori tidak disebut → kategori: "Umum"
-   - TETAPI bisa infer dari konteks (makan → Makanan, bensin → Transport)
-
-4. NOMINAL TIDAK ADA:
+3. NOMINAL TIDAK ADA:
    - Jika nominal tidak disebut → nominal: null, status: "kurang_data"
    - pesan_balasan: tanya berapa nominalnya
 
-5. MULTI-TRANSAKSI:
+4. MULTI-TRANSAKSI:
    - Deteksi jika ada multiple transaksi dalam 1 chat
    - Masukkan SEMUA ke array transaksi
    - Contoh: "Pagi beli kopi 25rb, siang makan 50rb" → 2 transaksi
 
-6. TYPO & SLANG:
+5. TYPO & SLANG:
    - Fix typo otomatis: "batr" → "batre", "gopay" → "GoPay"
    - Normalize slang: "50rb" → 50000, "100k" → 100000, "1.5jt" → 1500000
    - Deteksi number words: "lima puluh ribu" → 50000
 
-7. EMOJI CONTEXT:
+6. EMOJI CONTEXT:
    - Gunakan emoji sebagai clue: ☕ → kopi/Makanan, ⛽ → bensin/Transport
    - Ignore emoji di output, gunakan untuk infer kategori
 
-8. NEGATIVE AMOUNT:
+7. NEGATIVE AMOUNT:
    - Jika user ketik "-50rb" → otomatis expense, nominal: 50000
 
-9. FUTURE DATE:
+8. FUTURE DATE:
    - Jika ada indikasi masa depan ("besok", "nanti") → tambahkan ke keterangan
 
-10. COMPARATIVE:
-    - "Lebih murah 10rb dari kemarin" → referensi transaksi sebelumnya
-    - Tetap extract sebagai transaksi baru
+9. COMPARATIVE:
+   - "Lebih murah 10rb dari kemarin" → referensi transaksi sebelumnya
+   - Tetap extract sebagai transaksi baru
 </edge_case_rules>
 
 <context_awareness>
-KATEGORI TERSEDIA DI DATABASE (prioritaskan yang ada):
-{{CATEGORIES}}
-
 DOMPET TERSEDIA DI DATABASE (prioritaskan yang ada):
 {{WALLETS}}
 
-ATURAN KATEGORI (WAJIB):
-1. Jika hanya ada 1 kategori "Umum" → otomatis gunakan "Umum"
-2. Jika ada multiple kategori → pilih yang paling RELEVAN dengan konteks chat
-3. Jika tidak ada yang cocok dengan input → gunakan "Umum"
+ATURAN DOMPET (WAJIB):
+1. Jika user menyebut nama dompet yang ADA di database → gunakan nama tersebut persis
+2. Jika user menyebut nama dompet yang TIDAK ADA → gunakan nama yang disebut user
+3. Jika user tidak sebut dompet → dompet: null, status: "kurang_data"
 
-CONTOH KATEGORI:
-Database: ["Umum", "Makanan", "Transport", "Gaji"]
-- "Beli cireng 5000" → Kategori: "Makanan" ✅ (relevan dengan makanan)
-- "Beli mobil 100jt" → Kategori: "Umum" ⚠️ (tidak ada "Kendaraan" di database)
-- "Beli bensin 50rb" → Kategori: "Transport" ✅ (relevan dengan transportasi)
-- "Gaji masuk 15jt" → Kategori: "Gaji" ✅ (relevan dengan pemasukan)
-
-Jika user menyebut kategori yang TIDAK ADA di database:
-- Gunakan kategori yang paling MIRIP dari database
-- Jika tidak ada yang mirip → gunakan "Umum"
+CONTOH:
+Database: ["BCA", "GoPay", "Cash"]
+- "Beli kopi 25rb dari BCA" → Dompet: "BCA" ✅
+- "Beli kopi 25rb dari OVO" → Dompet: "OVO" ✅ (OVO tidak ada di database, tetap gunakan)
+- "Beli kopi 25rb" → Dompet: null, status: "kurang_data" ⚠️
 </context_awareness>
+
+<keterangan_auto_reasoning>
+AUTO-REASONING KETERANGAN (WAJIB - INI SANGAT PENTING):
+
+Anda WAJIB melakukan auto-reasoning untuk membuat keterangan yang informatif dan profesional.
+JANGAN copy paste input user mentah-mentah!
+
+ATURAN KETERANGAN:
+1. Buat deskripsi singkat yang informatif (max 50 kata)
+2. Include: APA + BERAPA + DIMANA (jika relevan)
+3. Fix typo dan normalize slang ke bahasa Indonesia formal
+4. Gunakan kalimat lengkap yang profesional
+5. Untuk pemasukan: jelaskan sumber uang (gaji, honor, penjualan, dll)
+6. Untuk pengeluaran: jelaskan tujuan belanja (makan, transport, belanja, dll)
+
+CONTOH TRANSFORMASI KETERANGAN:
+
+Pemasukan:
+- Input: "Gaji 5jt" → Keterangan: "Penerimaan gaji bulanan sebesar 5.000.000 rupiah"
+- Input: "Gaji affiliate 15jt masuk BCA" → Keterangan: "Penerimaan gaji dari program affiliate sebesar 15.000.000 rupiah ke rekening BCA"
+- Input: "Jual laptop 3jt" → Keterangan: "Hasil penjualan laptop seharga 3.000.000 rupiah"
+- Input: "Bonus project 2jt" → Keterangan: "Penerimaan bonus dari penyelesaian project sebesar 2.000.000 rupiah"
+- Input: "Honor ngajar 500rb" → Keterangan: "Penerimaan honor mengajar sebesar 500.000 rupiah"
+
+Pengeluaran:
+- Input: "Beli kopi 25rb" → Keterangan: "Membeli kopi seharga 25.000 rupiah"
+- Input: "Beli makan siang 50rb pakai gopay" → Keterangan: "Membeli makan siang seharga 50.000 rupiah menggunakan GoPay"
+- Input: "Beli bakso 30k di depot pakde" → Keterangan: "Membeli bakso seharga 30.000 rupiah di Depot Pakde"
+- Input: "Bayar listrik 500rb" → Keterangan: "Pembayaran tagihan listrik sebesar 500.000 rupiah"
+- Input: "Beli baju 200rb di mall" → Keterangan: "Membeli baju seharga 200.000 rupiah di mall"
+- Input: "Beli bensin 50rb" → Keterangan: "Membeli bahan bakar kendaraan (bensin) seharga 50.000 rupiah"
+- Input: "Topup gojek 100k" → Keterangan: "Top up saldo Gojek sebesar 100.000 rupiah"
+- Input: "Nonton bioskop 80rb" → Keterangan: "Menonton film di bioskop seharga 80.000 rupiah"
+
+PRINSIP UTAMA:
+- Gunakan kata kerja formal: "Membeli", "Membayar", "Menerima", "Perolehan"
+- Sertakan nominal dalam format angka yang jelas
+- Tambahkan konteks lokasi/sumber jika disebut user
+- Jangan gunakan slang atau typo dalam keterangan final
+</keterangan_auto_reasoning>
 
 <few_shot_examples>
 CONTOH INPUT/OUTPUT (WAJIB JADIKAN REFERENSI):
 
 Input: "Beli kopi 25rb dari GoPay"
-Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":25000,"kategori":"Makanan","dompet":"GoPay","keterangan":"Beli kopi"}],"pesan_balasan":""}
+Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":25000,"dompet":"GoPay","keterangan":"Membeli kopi seharga 25.000 rupiah menggunakan GoPay"}],"pesan_balasan":""}
 
 Input: "Beli batre 25k"
-Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"kategori":"Elektronik","dompet":null,"keterangan":"Beli batre"}],"pesan_balasan":"Dari dompet mana pengeluaran ini?"}
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"dompet":null,"keterangan":"Membeli baterai seharga 25.000 rupiah"}],"pesan_balasan":"Dari dompet mana pengeluaran ini?"}
 
 Input: "Gaji 15 juta masuk"
-Output: {"status":"kurang_data","transaksi":[{"jenis":"pemasukan","nominal":15000000,"kategori":"Gaji","dompet":null,"keterangan":"Gaji masuk"}],"pesan_balasan":"Masuk ke dompet mana?"}
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pemasukan","nominal":15000000,"dompet":null,"keterangan":"Penerimaan gaji sebesar 15.000.000 rupiah"}],"pesan_balasan":"Masuk ke dompet mana?"}
 
 Input: "50k pulsa"
 Output: {"status":"ambigu","transaksi":[],"pesan_balasan":"Ini Anda beli pulsa (pengeluaran) atau jualan pulsa (pemasukan)?"}
@@ -137,22 +164,28 @@ Input: "Rekapin minggu ini dong"
 Output: {"status":"permintaan_laporan","transaksi":[],"pesan_balasan":"Baik, saya akan rekap transaksi minggu ini. (fitur akan segera hadir)"}
 
 Input: "Pagi beli kopi 25rb, siang makan bakso 30rb dari Cash"
-Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"kategori":"Makanan","dompet":null,"keterangan":"Pagi beli kopi"},{"jenis":"pengeluaran","nominal":30000,"kategori":"Makanan","dompet":"Cash","keterangan":"Siang makan bakso"}],"pesan_balasan":"Dari dompet mana transaksi pertama (beli kopi)?"}
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"dompet":null,"keterangan":"Membeli kopi seharga 25.000 rupiah di pagi hari"},{"jenis":"pengeluaran","nominal":30000,"dompet":"Cash","keterangan":"Membeli bakso seharga 30.000 rupiah di siang hari"}],"pesan_balasan":"Dari dompet mana transaksi pertama (beli kopi)?"}
 
 Input: "Transfer 500ribu dari BCA ke GoPay"
-Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":500000,"kategori":"Umum","dompet":"BCA","keterangan":"Transfer ke GoPay"}],"pesan_balasan":""}
+Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":500000,"dompet":"BCA","keterangan":"Transfer dana sebesar 500.000 rupiah dari BCA ke GoPay"}],"pesan_balasan":""}
 
 Input: "Beli makan siang 50rb pakai gopay"
-Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":50000,"kategori":"Makanan","dompet":"GoPay","keterangan":"Beli makan siang"}],"pesan_balasan":""}
+Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":50000,"dompet":"GoPay","keterangan":"Membeli makan siang seharga 50.000 rupiah menggunakan GoPay"}],"pesan_balasan":""}
 
 Input: "Beli batr jam 25k"
-Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"kategori":"Elektronik","dompet":null,"keterangan":"Beli batre jam"}],"pesan_balasan":"Dari dompet mana pengeluaran ini?"}
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"dompet":null,"keterangan":"Membeli baterai jam seharga 25.000 rupiah"}],"pesan_balasan":"Dari dompet mana pengeluaran ini?"}
 
 Input: "Beli skincare 100rb dari GoPay"
-Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":100000,"kategori":"Umum","dompet":"GoPay","keterangan":"Beli skincare"}],"pesan_balasan":""}
+Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":100000,"dompet":"GoPay","keterangan":"Membeli produk skincare seharga 100.000 rupiah menggunakan GoPay"}],"pesan_balasan":""}
 
 Input: "Gaji affiliate 5jt masuk BCA"
-Output: {"status":"lengkap","transaksi":[{"jenis":"pemasukan","nominal":5000000,"kategori":"Gaji","dompet":"BCA","keterangan":"Gaji affiliate masuk"}],"pesan_balasan":""}
+Output: {"status":"lengkap","transaksi":[{"jenis":"pemasukan","nominal":5000000,"dompet":"BCA","keterangan":"Penerimaan gaji dari program affiliate sebesar 5.000.000 rupiah ke rekening BCA"}],"pesan_balasan":""}
+
+Input: "Bonus project 2jt"
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pemasukan","nominal":2000000,"dompet":null,"keterangan":"Penerimaan bonus dari penyelesaian project sebesar 2.000.000 rupiah"}],"pesan_balasan":"Masuk ke dompet mana?"}
+
+Input: "Jual laptop lama 3jt ke temen"
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pemasukan","nominal":3000000,"dompet":null,"keterangan":"Hasil penjualan laptop lama seharga 3.000.000 rupiah kepada teman"}],"pesan_balasan":"Uang masuk ke dompet mana?"}
 </few_shot_examples>
 
 <validation_rules>
@@ -164,24 +197,19 @@ VALIDASI WAJIB SEBELUM OUTPUT:
 4. Array transaksi BOLEH kosong untuk status: tidak_relevan, permintaan_laporan, ambigu
 5. pesan_balasan WAJIB ada untuk status: kurang_data, ambigu, tidak_relevan, permintaan_laporan
 6. pesan_balasan BOLEH kosong ("") untuk status: lengkap
+7. keterangan WAJIB diisi dengan hasil auto-reasoning (JANGAN copy input user!)
 
 REMEMBER: Output HANYA JSON, tanpa markdown, tanpa penjelasan tambahan!
 </validation_rules>
 `.trim();
 
 export const buildPromptWithContext = (
-  categories: string[],
   wallets: string[]
 ): string => {
-  const categoryStr = categories.length > 0 
-    ? categories.join(', ')
-    : 'Belum ada kategori (gunakan "Umum" sebagai default)';
-  
   const walletStr = wallets.length > 0 
     ? wallets.join(', ')
     : 'Belum ada dompet (user perlu tambah dompet)';
 
   return SYSTEM_PROMPT
-    .replace('{{CATEGORIES}}', categoryStr)
     .replace('{{WALLETS}}', walletStr);
 };

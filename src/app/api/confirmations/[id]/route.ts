@@ -36,16 +36,13 @@ export async function PATCH(
       const { data: transaction, error: txError } = await supabase
         .from('transactions')
         .insert({
-          type: parsed.type,
-          amount: parsed.amount,
-          description: parsed.description,
-          wallet_id: parsed.wallet_id,
-          category_id: parsed.category_id,
-          from_wallet_id: parsed.from_wallet_id,
-          to_wallet_id: parsed.to_wallet_id,
+          type: parsed.jenis === 'pemasukan' ? 'income' : 'expense',
+          amount: parsed.nominal,
+          description: parsed.keterangan,
+          wallet_name: parsed.dompet,
           created_by: confirmation.user_id,
           group_id: confirmation.group_id,
-          transaction_date: parsed.date || new Date().toISOString(),
+          transaction_date: new Date().toISOString(),
         })
         .select()
         .single()

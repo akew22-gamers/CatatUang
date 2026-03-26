@@ -40,17 +40,6 @@ async function sendReport(ctx: any, report: ReportSummary) {
   text += `Saldo: <b>Rp ${report.balance.toLocaleString('id-ID')}</b>\n`
   text += `Transaksi: <b>${report.transactionCount}</b>\n\n`
   
-  if (report.byCategory.length > 0) {
-    text += `<b>📁 Berdasarkan Kategori:</b>\n`
-    report.byCategory.forEach(cat => {
-      const percentage = report.totalExpense > 0 
-        ? ((cat.amount / report.totalExpense) * 100).toFixed(1)
-        : 0
-      text += `• ${escapeHtml(cat.name)}: Rp ${cat.amount.toLocaleString('id-ID')} (${percentage}%)\n`
-    })
-    text += `\n`
-  }
-  
   if (report.byWallet.length > 0) {
     text += `<b>💳 Berdasarkan Dompet:</b>\n`
     report.byWallet.forEach(wallet => {
@@ -91,8 +80,7 @@ export function setupBotHandlers() {
   bot.command('help', async (ctx) => {
     await ctx.reply(
       `📖 <b>Bantuan CatatUang Bot</b>\n\n` +
-      `<b>📝 Command Tersedia:</b>\n\n` +
-      `<b>🔹 Manajemen Transaksi:</b>\n` +
+      `<b>📝 Manajemen Transaksi:</b>\n` +
       `/start - Mulai bot\n` +
       `Ketik natural: "Beli kopi 25rb dari GoPay"\n\n` +
       `<b>🔹 Laporan Keuangan:</b>\n` +
@@ -111,14 +99,11 @@ export function setupBotHandlers() {
       `/dompet - Lihat daftar dompet\n` +
       `/tambah_dompet Nama - Tambah dompet baru\n` +
       `  Contoh: /tambah_dompet GoPay\n\n` +
-      `<b>🔹 Manajemen Kategori:</b>\n` +
-      `/kategori - Lihat daftar kategori\n` +
-      `/tambah_kategori Nama - Tambah kategori baru\n` +
-      `  Contoh: /tambah_kategori Makanan\n\n` +
       `<b>💡 Tips:</b>\n` +
       `- Selalu sebutkan nominal (25rb, 100k, 1jt)\n` +
       `- Sebutkan dompet untuk transaksi\n` +
-      `- Bot akan konfirmasi sebelum simpan`,
+      `- Bot akan konfirmasi sebelum simpan\n` +
+      `- AI otomatis membuat keterangan yang jelas`,
       { parse_mode: 'HTML' }
     )
   })
@@ -229,29 +214,12 @@ export function setupBotHandlers() {
     )
   })
 
-  bot.command('kategori', async (ctx) => {
-    if (!supabase) return
-    const { data } = await supabase.from('categories').select('name').eq('group_id', 1).order('name')
-    if (!data?.length) return ctx.reply('📭 Belum ada kategori', { parse_mode: 'HTML' })
-    const list = data.map((c: any) => `• ${escapeHtml(c.name)}`).join('\n')
-    await ctx.reply(`📋 <b>Kategori:</b>\n${list}`, { parse_mode: 'HTML' })
-  })
-
   bot.command('dompet', async (ctx) => {
     if (!supabase) return
     const { data } = await supabase.from('wallets').select('name').eq('group_id', 1).order('name')
     if (!data?.length) return ctx.reply('📭 Belum ada dompet', { parse_mode: 'HTML' })
     const list = data.map((w: any) => `• ${escapeHtml(w.name)}`).join('\n')
     await ctx.reply(`💳 <b>Dompet:</b>\n${list}`, { parse_mode: 'HTML' })
-  })
-
-  bot.command('tambah_kategori', async (ctx) => {
-    if (!supabase) return
-    const args = ctx.message.text.split(' ').slice(1).join(' ')
-    if (!args) return ctx.reply('❌ Format: /tambah_kategori Nama', { parse_mode: 'HTML' })
-    const { error } = await supabase.from('categories').insert({ name: args.trim(), group_id: 1 })
-    if (error) return ctx.reply(`❌ Error: ${escapeHtml(error.message)}`, { parse_mode: 'HTML' })
-    await ctx.reply(`✅ Kategori "<b>${escapeHtml(args.trim())}</b>" ditambahkan!`, { parse_mode: 'HTML' })
   })
 
   bot.command('tambah_dompet', async (ctx) => {
@@ -390,7 +358,7 @@ export function setupBotHandlers() {
     }
 
     try {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://catatuang-three.vercel.app'
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://catatuangeas.netlify.app'
       
       const response = await fetch(`${appUrl}/api/parse-transaction`, {
         method: 'POST',
@@ -424,20 +392,18 @@ export function setupBotHandlers() {
         console.log('Confirmation saved:', txId)
       }
 
-      const [{ data: wallets }, { data: categories }] = await Promise.all([
-        supabase?.from('wallets').select('name').eq('group_id', 1),
-        supabase?.from('categories').select('name').eq('group_id', 1),
-      ])
+      const { data: wallets } = await supabase
+        ?.from('wallets')
+        .select('name')
+        .eq('group_id', 1)
       
       const walletList = wallets?.map((w: any) => w.name) || []
-      const categoryList = categories?.map((c: any) => c.name) || []
       const tx = parseResult.transaksi[0]
       
       let text = `✅ <b>Konfirmasi Transaksi</b>\n\n`
       text += `<b>Jenis:</b> ${tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}\n`
       text += `<b>Jumlah:</b> ${tx.nominal ? `Rp ${tx.nominal.toLocaleString('id-ID')}` : '❓'}\n`
       text += `<b>Ket:</b> ${escapeHtml(tx.keterangan)}\n`
-      text += `<b>Kategori:</b> ${escapeHtml(tx.kategori || 'Umum')}\n`
       text += tx.dompet ? `<b>Dompet:</b> ${escapeHtml(tx.dompet)} ✅\n` : `<b>Dompet:</b> ⚠️ Belum dipilih\n`
       
       const keyboard: any[][] = []
@@ -454,23 +420,11 @@ export function setupBotHandlers() {
           text += `\n\n💳 Belum ada dompet. /tambah_dompet`
         }
       } else {
-        const aiCategoryValid = tx.kategori && categoryList.includes(tx.kategori)
-        const hasOnlyUmum = categoryList.length === 1 && categoryList[0] === 'Umum'
-        
-        if (!aiCategoryValid && !hasOnlyUmum && tx.category_needs_selection) {
-          text += `\n<i>Pilih kategori:</i>`
-          for (let i = 0; i < categoryList.length; i += 2) {
-            const row = [{ text: `📁 ${categoryList[i]}`, callback_data: `category_${txId}_${categoryList[i]}` }]
-            if (categoryList[i + 1]) row.push({ text: `📁 ${categoryList[i + 1]}`, callback_data: `category_${txId}_${categoryList[i + 1]}` })
-            keyboard.push(row)
-          }
-        } else {
-          text += `\n✅ <b>Siap disimpan!</b>`
-          keyboard.push([
-            { text: '✅ Simpan', callback_data: `save_${txId}` },
-            { text: '❌ Batal', callback_data: `cancel_${txId}` },
-          ])
-        }
+        text += `\n✅ <b>Siap disimpan!</b>`
+        keyboard.push([
+          { text: '✅ Simpan', callback_data: `save_${txId}` },
+          { text: '❌ Batal', callback_data: `cancel_${txId}` },
+        ])
       }
 
       await ctx.reply(text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })
@@ -587,7 +541,6 @@ export function setupBotHandlers() {
         `<b>Jenis:</b> ${typeLabel}\n` +
         `<b>Jumlah:</b> ${amount}\n` +
         `<b>Ket:</b> ${escapeHtml(tx.keterangan)}\n` +
-        `<b>Kategori:</b> ${escapeHtml(tx.kategori || 'Umum')}\n` +
         `<b>Dompet:</b> ${escapeHtml(selectedValue)} ✅\n\n` +
         `✅ <b>Siap disimpan!</b>`
       
@@ -605,38 +558,8 @@ export function setupBotHandlers() {
     }
 
     if (action === 'category') {
-      const parseResult = confirmation.parsed_data as ParseResult
-      for (const tx of parseResult.transaksi) {
-        tx.kategori = selectedValue
-        tx.category_needs_selection = false
-      }
-      
-      await supabase.from('ai_confirmations').update({ parsed_data: parseResult }).eq('id', confirmation.id)
-      await ctx.answerCallbackQuery()
-      
-      const tx = parseResult.transaksi[0]
-      const amount = tx.nominal ? `Rp ${tx.nominal.toLocaleString('id-ID')}` : '❓'
-      const typeLabel = tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'
-      
-      const completeText = 
-        `✅ <b>Konfirmasi Transaksi</b>\n\n` +
-        `<b>Jenis:</b> ${typeLabel}\n` +
-        `<b>Jumlah:</b> ${amount}\n` +
-        `<b>Ket:</b> ${escapeHtml(tx.keterangan)}\n` +
-        `<b>Kategori:</b> ${escapeHtml(selectedValue)} ✅\n` +
-        `<b>Dompet:</b> ${escapeHtml(tx.dompet || 'Cash')} ✅\n\n` +
-        `✅ <b>Siap disimpan!</b>`
-      
-      await ctx.editMessageText(completeText, {
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '✅ Simpan', callback_data: `save_${txId}` },
-            { text: '❌ Batal', callback_data: `cancel_${txId}` },
-          ]],
-        },
-      })
-      console.log('Category selected:', selectedValue)
+      // Categories removed - this handler is deprecated
+      await ctx.answerCallbackQuery({ show_alert: true, text: 'Kategori sudah dihapus' })
       return
     }
 
@@ -682,17 +605,6 @@ export function setupBotHandlers() {
         }
 
         let walletId = walletData.id
-        let categoryId = null
-        
-        if (tx.kategori && tx.kategori !== 'Umum') {
-          const { data: categoryIdData } = await supabase
-            .from('categories')
-            .select('id')
-            .eq('name', tx.kategori)
-            .eq('group_id', 1)
-            .single()
-          categoryId = categoryIdData?.id || null
-        }
 
         const { data: transaction, error: txError } = await supabase
           .from('transactions')
@@ -703,9 +615,7 @@ export function setupBotHandlers() {
             group_id: 1,
             telegram_user_id: userId,
             wallet_id: walletId,
-            category_id: categoryId,
             wallet_name: tx.dompet,
-            category_name: tx.kategori || 'Umum',
             transaction_date: new Date().toISOString(),
           })
           .select('id')
