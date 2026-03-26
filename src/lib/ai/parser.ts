@@ -31,7 +31,7 @@ function validateParseResult(result: any): ParseResult {
   const validStatuses = ['lengkap', 'kurang_data', 'ambigu', 'tidak_relevan', 'permintaan_laporan']
   
   if (!result || typeof result !== 'object') {
-    throw new Error('Invalid response format: not an object')
+    throw new Error('Invalid response format')
   }
   
   if (!validStatuses.includes(result.status)) {
@@ -44,24 +44,6 @@ function validateParseResult(result: any): ParseResult {
   
   if (typeof result.pesan_balasan !== 'string') {
     throw new Error('pesan_balasan must be a string')
-  }
-  
-  for (const tx of result.transaksi) {
-    if (!tx || typeof tx !== 'object') {
-      throw new Error('Invalid transaction object')
-    }
-    
-    if (!['pemasukan', 'pengeluaran'].includes(tx.jenis)) {
-      throw new Error(`Invalid jenis: ${tx.jenis}`)
-    }
-    
-    if (tx.nominal !== null && typeof tx.nominal !== 'number') {
-      throw new Error(`Invalid nominal: ${tx.nominal}`)
-    }
-    
-    if (typeof tx.keterangan !== 'string') {
-      throw new Error('keterangan must be a string')
-    }
   }
   
   return result as ParseResult
@@ -82,9 +64,7 @@ export async function parseFinancialChat(
   try {
     const emojis = extractEmojis(message)
     const emojiContext = extractContextFromEmojis(emojis)
-    
     const preprocessedMessage = preprocessMessage(message)
-    
     const systemPrompt = buildPromptWithContext(context.categories, context.wallets)
     
     const userMessage = emojiContext.length > 0
@@ -92,7 +72,6 @@ export async function parseFinancialChat(
       : preprocessedMessage
 
     console.log('Preprocessed message:', preprocessedMessage)
-    console.log('Emoji context:', emojiContext)
     console.log('Final user message:', userMessage)
 
     const completion = await groq.chat.completions.create({
@@ -114,7 +93,6 @@ export async function parseFinancialChat(
     console.log('Groq raw response:', content)
 
     const parsed = JSON.parse(content)
-    
     const validated = validateParseResult(parsed)
     
     validated.transaksi = validated.transaksi.map(tx => ({
@@ -126,11 +104,6 @@ export async function parseFinancialChat(
     return validated
   } catch (error: any) {
     console.error('Groq API error:', error)
-    
-    if (error.name === 'JSONParseError') {
-      console.error('Failed to parse JSON response')
-    }
-    
     return mockParseFinancialChat(message, context)
   }
 }
@@ -141,7 +114,7 @@ function mockParseFinancialChat(
 ): ParseResult {
   const lowerMessage = message.toLowerCase()
   
-  const isIncome = lowerMessage.includes('gaji') || lowerMessage.includes('terima') || lowerMessage.includes('masuk')
+  const isIncome = lowerMessage.includes('gaji') || lowerMessage.includes('terima') || lowerMessage.includes('masuk') || lowerMessage.includes('affiliate')
   const isReport = lowerMessage.includes('rekap') || lowerMessage.includes('laporan') || lowerMessage.includes('berapa')
   const isGreeting = lowerMessage.includes('halo') || lowerMessage.includes('hai') || lowerMessage.includes('test')
   
@@ -177,32 +150,34 @@ function mockParseFinancialChat(
     }
   }
   
-  const walletList = context.wallets || ['Cash', 'BCA', 'GoPay']
-  const detectedWallet = walletList.find(w => lowerMessage.includes(w.toLowerCase())) || null
-  
   let kategori: string | null = 'Umum'
-  if (lowerMessage.includes('makan') || lowerMessage.includes('kopi')) {
+  if (lowerMessage.includes('makan') || lowerMessage.includes('kopi') || lowerMessage.includes('bakso') || lowerMessage.includes('jajan')) {
     kategori = 'Makanan'
   } else if (lowerMessage.includes('bensin') || lowerMessage.includes('transport')) {
     kategori = 'Transport'
-  } else if (lowerMessage.includes('gaji')) {
-    kategori = 'Gaji'
+  } else if (lowerMessage.includes('gaji') || lowerMessage.includes('affiliate')) {
+    kategori = context.categories.find(c => c.toLowerCase().includes('gaji') || c.toLowerCase().includes('affiliate')) || 'Umum'
   }
   
-  const needsWallet = !detectedWallet && (isIncome || !isReport)
+  // IMPORTANT: DO NOT auto-fill dompet! Set to null if not specified
+  const dompet: string | null = null
+  
+  // If wallet not specified, status MUST be kurang_data
+  const needsWallet = true // Always require wallet selection
+  const needsNominal = nominal === null
   
   return {
-    status: needsWallet || nominal === null ? 'kurang_data' : 'lengkap',
+    status: needsWallet || needsNominal ? 'kurang_data' : 'lengkap',
     transaksi: [{
       jenis: isIncome ? 'pemasukan' : 'pengeluaran',
       nominal,
       kategori,
-      dompet: detectedWallet,
+      dompet, // null - user must select
       keterangan: message,
     }],
     pesan_balasan: needsWallet 
       ? `Dari dompet mana ${isIncome ? 'pemasukan' : 'pengeluaran'} ini?`
-      : nominal === null
+      : needsNominal
         ? 'Berapa nominalnya?'
         : '',
   }
