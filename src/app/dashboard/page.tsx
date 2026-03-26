@@ -15,6 +15,7 @@ interface Message {
   content: string | React.ReactNode
   data?: any
   timestamp: Date
+  needsWallet?: boolean
 }
 
 export default function ChatPage() {
@@ -30,6 +31,9 @@ export default function ChatPage() {
 
   useEffect(() => {
     loadWallets()
+  }, [])
+  
+  useEffect(() => {
     scrollToBottom()
   }, [messages])
 
@@ -282,28 +286,6 @@ export default function ChatPage() {
                   <span className="text-muted-foreground">Dompet:</span>
                   <span>{tx.dompet || '❌ Belum dipilih'}</span>
                 </div>
-                {!tx.dompet && (
-                  <div className="space-y-2 pt-2 border-t mt-2">
-                    <p className="text-xs font-semibold text-muted-foreground">Pilih dompet:</p>
-                    {wallets.length === 0 ? (
-                      <p className="text-xs text-amber-600">⚠️ Belum ada dompet. Silakan tambah dompet di menu Pengaturan.</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {wallets.map((wallet) => (
-                          <Button
-                            key={wallet}
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleWalletSelect(wallet, messageIndex)}
-                            className="text-xs h-8"
-                          >
-                            💳 {wallet}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -410,6 +392,30 @@ export default function ChatPage() {
               }`}>
                 <CardContent className="p-4 space-y-3">
                   {msg.content}
+                  
+                  {/* Wallet Selection Buttons - Rendered dynamically */}
+                  {msg.data?.status === 'kurang_data' && msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && (
+                    <div className="space-y-2 pt-3 border-t">
+                      <p className="text-xs font-semibold text-muted-foreground">Pilih dompet:</p>
+                      {wallets.length === 0 ? (
+                        <p className="text-xs text-amber-600">⚠️ Memuat daftar dompet...</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {wallets.map((wallet) => (
+                            <Button
+                              key={wallet}
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleWalletSelect(wallet, i)}
+                              className="text-xs h-8"
+                            >
+                              💳 {wallet}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   
                   {/* Action Buttons */}
                   {msg.data?.status === 'lengkap' && (
