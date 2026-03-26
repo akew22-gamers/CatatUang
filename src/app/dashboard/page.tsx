@@ -35,26 +35,43 @@ export default function ChatPage() {
 
   const loadWallets = async () => {
     try {
-      console.log('Loading wallets...')
+      console.log('[Wallet Loader] Starting...')
       const supabase = createClient()
       
-      // Try direct query first
       const { data: walletData, error } = await supabase
         .from('wallets')
         .select('name')
         .eq('group_id', 1)
         .order('name')
       
+      console.log('[Wallet Loader] Query result:', { 
+        data: walletData, 
+        error: error ? { message: error.message, details: error.details } : null 
+      })
+      
       if (error) {
-        console.error('Error fetching wallets:', error.message, error.details)
+        console.error('[Wallet Loader] Error:', error.message, error.details)
+        // Fallback to hardcoded wallets for debugging
+        console.log('[Wallet Loader] Using fallback wallets: ["Cash", "BCA", "GoPay"]')
+        setWallets(['Cash', 'BCA', 'GoPay'])
         return
       }
       
       const walletNames = walletData?.map(w => w.name) || []
-      console.log('Loaded wallets:', walletNames, 'Count:', walletNames.length)
-      setWallets(walletNames)
+      console.log('[Wallet Loader] Final wallets:', walletNames, 'Count:', walletNames.length)
+      
+      // If no wallets from DB, use fallback
+      if (walletNames.length === 0) {
+        console.log('[Wallet Loader] Empty from DB, using fallback: ["Cash", "BCA", "GoPay"]')
+        setWallets(['Cash', 'BCA', 'GoPay'])
+      } else {
+        setWallets(walletNames)
+      }
     } catch (error) {
-      console.error('Error loading wallets:', error)
+      console.error('[Wallet Loader] Exception:', error)
+      // Fallback on exception
+      console.log('[Wallet Loader] Exception fallback: ["Cash", "BCA", "GoPay"]')
+      setWallets(['Cash', 'BCA', 'GoPay'])
     }
   }
 
