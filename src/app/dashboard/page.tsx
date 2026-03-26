@@ -11,7 +11,7 @@ import { CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
 
 interface Message {
   role: 'user' | 'assistant'
-  content: string
+  content: string | React.ReactNode
   data?: any
   timestamp: Date
 }
@@ -31,7 +31,6 @@ export default function ChatPage() {
   }, [messages])
 
   const formatText = (text: string) => {
-    // Convert **text** to proper HTML bold
     return text.split('\n').map((line, i) => (
       <p key={i} className="min-h-[1.5rem]">
         {line.split(/(\*\*.*?\*\*)/).map((part, j) => {
@@ -45,12 +44,15 @@ export default function ChatPage() {
   }
 
   const handleSave = async (data: any) => {
+    setLoading(true)
     try {
+      const { data: { user } } = await fetch('/api/auth/user').then(r => r.json())
+      
       const response = await fetch('/api/confirmations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: 'user-id', // Get from auth
+          user_id: user?.id || 'anonymous',
           group_id: 1,
           original_message: messages[messages.length - 2]?.content,
           parsed_data: data,
@@ -62,16 +64,41 @@ export default function ChatPage() {
 
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: '✅ Transaksi berhasil disimpan!',
+        content: (
+          <div className="flex items-center gap-2 text-green-600">
+            <CheckCircle2 className="h-5 w-5" />
+            <span className="font-semibold">Transaksi berhasil disimpan!</span>
+          </div>
+        ),
         timestamp: new Date(),
       }])
     } catch (error: any) {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `❌ Error: ${error.message}`,
+        content: (
+          <div className="flex items-center gap-2 text-red-600">
+            <XCircle className="h-5 w-5" />
+            <span>❌ Error: {error.message}</span>
+          </div>
+        ),
         timestamp: new Date(),
       }])
+    } finally {
+      setLoading(false)
     }
+  }
+
+  const handleCancel = () => {
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <XCircle className="h-5 w-5" />
+          <span>Transaksi dibatalkan. Silakan ketik transaksi baru.</span>
+        </div>
+      ),
+      timestamp: new Date(),
+    }])
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,7 +126,12 @@ export default function ChatPage() {
       if (result.error) {
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: `❌ Error: ${result.error}`,
+          content: (
+            <div className="flex items-center gap-2 text-red-600">
+              <XCircle className="h-5 w-5" />
+              <span>❌ Error: {result.error}</span>
+            </div>
+          ),
           timestamp: new Date()
         }])
         return
@@ -108,7 +140,7 @@ export default function ChatPage() {
       const parsed = result.data
       
       // Render message based on status
-      let content = ''
+      let content: React.ReactNode = null
       let showButtons = false
       
       if (parsed.status === 'lengkap') {
@@ -122,8 +154,8 @@ export default function ChatPage() {
             <div className="grid gap-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Jenis:</span>
-                <Badge variant={tx.jenis === 'income' ? 'default' : 'destructive'}>
-                  {tx.jenis === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'}>
+                  {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
                 </Badge>
               </div>
               <div className="flex justify-between">
@@ -140,7 +172,7 @@ export default function ChatPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Dompet:</span>
-                <span>{tx.dompet}</span>
+                <span>{tx.dompet || '❌ Belum dipilih'}</span>
               </div>
             </div>
           </div>
@@ -152,6 +184,16 @@ export default function ChatPage() {
             <AlertCircle className="h-5 w-5 mt-0.5" />
             <div>
               <span className="font-semibold">Data Belum Lengkap</span>
+              <p className="text-sm mt-1">{parsed.pesan_balasan}</p>
+            </div>
+          </div>
+        )
+      } else if (parsed.status === 'ambigu') {
+        content = (
+          <div className="flex items-start gap-2 text-amber-600">
+            <AlertCircle className="h-5 w-5 mt-0.5" />
+            <div>
+              <span className="font-semibold">Data Ambigu</span>
               <p className="text-sm mt-1">{parsed.pesan_balasan}</p>
             </div>
           </div>
@@ -173,7 +215,12 @@ export default function ChatPage() {
     } catch (error: any) {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `❌ Error: ${error.message}`,
+        content: (
+          <div className="flex items-center gap-2 text-red-600">
+            <XCircle className="h-5 w-5" />
+            <span>❌ Error: {error.message}</span>
+          </div>
+        ),
         timestamp: new Date()
       }])
     } finally {
@@ -204,16 +251,25 @@ export default function ChatPage() {
                     <p className="text-sm font-medium">Contoh penggunaan:</p>
                     <div className="space-y-2 text-sm">
                       <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                        <span className="text-primary font-medium">•</span>
-                        <span className="text-muted-foreground">"Beli makan siang 50rb pakai gopay"</span>
+                        <span className="text-primary font-medium">💰</span>
+                        <div>
+                          <span className="text-muted-foreground">"Gaji masuk 15 juta ke BCA"</span>
+                          <Badge className="ml-2 bg-green-600">Pemasukan</Badge>
+                        </div>
                       </div>
                       <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                        <span className="text-primary font-medium">•</span>
-                        <span className="text-muted-foreground">"Gaji masuk 15 juta ke BCA"</span>
+                        <span className="text-primary font-medium">💳</span>
+                        <div>
+                          <span className="text-muted-foreground">"Beli makan siang 50rb pakai gopay"</span>
+                          <Badge className="ml-2 bg-red-600">Pengeluaran</Badge>
+                        </div>
                       </div>
                       <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                        <span className="text-primary font-medium">•</span>
-                        <span className="text-muted-foreground">"Transfer 500k dari BCA ke GoPay"</span>
+                        <span className="text-primary font-medium">🔄</span>
+                        <div>
+                          <span className="text-muted-foreground">"Transfer 500k dari BCA ke GoPay"</span>
+                          <Badge className="ml-2 bg-blue-600">Transfer</Badge>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -233,7 +289,7 @@ export default function ChatPage() {
                   : 'bg-card border-muted'
               }`}>
                 <CardContent className="p-4 space-y-3">
-                  {typeof msg.content === 'string' ? formatText(msg.content) : msg.content}
+                  {msg.content}
                   
                   {/* Action Buttons */}
                   {msg.data?.status === 'lengkap' && (
@@ -241,14 +297,17 @@ export default function ChatPage() {
                       <Button 
                         size="sm" 
                         onClick={() => handleSave(msg.data)}
+                        disabled={loading}
                         className="flex-1 bg-green-600 hover:bg-green-700"
                       >
                         <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Simpan
+                        {loading ? 'Menyimpan...' : 'Simpan'}
                       </Button>
                       <Button 
                         size="sm" 
                         variant="outline"
+                        onClick={handleCancel}
+                        disabled={loading}
                         className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
                       >
                         <XCircle className="h-4 w-4 mr-2" />
