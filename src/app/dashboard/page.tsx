@@ -15,14 +15,14 @@ interface Message {
   content: string | React.ReactNode
   data?: any
   timestamp: Date
-  needsWallet?: boolean
 }
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [wallets, setWallets] = useState<string[]>([])
+  const [wallets, setWallets] = useState<string[]>(['Cash', 'BCA', 'GoPay'])
+  const [walletsLoaded, setWalletsLoaded] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -38,45 +38,23 @@ export default function ChatPage() {
   }, [messages])
 
   const loadWallets = async () => {
-    try {
-      console.log('[Wallet Loader] Starting...')
-      const supabase = createClient()
-      
-      const { data: walletData, error } = await supabase
-        .from('wallets')
-        .select('name')
-        .eq('group_id', 1)
-        .order('name')
-      
-      console.log('[Wallet Loader] Query result:', { 
-        data: walletData, 
-        error: error ? { message: error.message, details: error.details } : null 
-      })
-      
-      if (error) {
-        console.error('[Wallet Loader] Error:', error.message, error.details)
-        // Fallback to hardcoded wallets for debugging
-        console.log('[Wallet Loader] Using fallback wallets: ["Cash", "BCA", "GoPay"]')
-        setWallets(['Cash', 'BCA', 'GoPay'])
-        return
-      }
-      
-      const walletNames = walletData?.map(w => w.name) || []
-      console.log('[Wallet Loader] Final wallets:', walletNames, 'Count:', walletNames.length)
-      
-      // If no wallets from DB, use fallback
-      if (walletNames.length === 0) {
-        console.log('[Wallet Loader] Empty from DB, using fallback: ["Cash", "BCA", "GoPay"]')
-        setWallets(['Cash', 'BCA', 'GoPay'])
-      } else {
-        setWallets(walletNames)
-      }
-    } catch (error) {
-      console.error('[Wallet Loader] Exception:', error)
-      // Fallback on exception
-      console.log('[Wallet Loader] Exception fallback: ["Cash", "BCA", "GoPay"]')
-      setWallets(['Cash', 'BCA', 'GoPay'])
+    console.log('[Wallet Loader] Starting...')
+    const supabase = createClient()
+    
+    const { data: walletData, error } = await supabase
+      .from('wallets')
+      .select('name')
+      .eq('group_id', 1)
+      .order('name')
+    
+    if (!error && walletData && walletData.length > 0) {
+      const walletNames = walletData.map(w => w.name)
+      console.log('[Wallet Loader] Loaded from DB:', walletNames)
+      setWallets(walletNames)
+    } else {
+      console.log('[Wallet Loader] Using fallback wallets')
     }
+    setWalletsLoaded(true)
   }
 
   const formatText = (text: string) => {
@@ -166,6 +144,7 @@ export default function ChatPage() {
   }
 
   const handleWalletSelect = (walletName: string, messageIndex: number) => {
+    console.log('[Wallet Select] Selected:', walletName, 'for message:', messageIndex)
     setMessages(prev => {
       const newMessages = [...prev]
       const msg = newMessages[messageIndex]
@@ -174,6 +153,7 @@ export default function ChatPage() {
           tx.dompet = walletName
         }
         msg.data.status = 'lengkap'
+        console.log('[Wallet Select] Updated message data:', msg.data)
       }
       return newMessages
     })
@@ -187,7 +167,6 @@ export default function ChatPage() {
     setInput('')
     setLoading(true)
     
-    const userMessageIndex = messages.length
     setMessages(prev => [...prev, { 
       role: 'user', 
       content: userMessage,
@@ -218,11 +197,8 @@ export default function ChatPage() {
       }
 
       const parsed = result.data
-      const messageIndex = messages.length + 1
       
-      // Render message based on status
       let content: React.ReactNode = null
-      let showButtons = false
       
       if (parsed.status === 'lengkap') {
         const tx = parsed.transaksi[0]
@@ -232,29 +208,28 @@ export default function ChatPage() {
               <CheckCircle2 className="h-5 w-5" />
               <span className="font-semibold">Transaksi Siap Disimpan</span>
             </div>
-              <div className="grid gap-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Jenis:</span>
-                  <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'}>
-                    {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
-                  </Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Jumlah:</span>
-                  <span className="font-semibold">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Keterangan:</span>
-                  <span>{tx.keterangan}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Dompet:</span>
-                  <span>{tx.dompet || '❌ Belum dipilih'}</span>
-                </div>
+            <div className="grid gap-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Jenis:</span>
+                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'}>
+                  {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
+                </Badge>
               </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Jumlah:</span>
+                <span className="font-semibold">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Keterangan:</span>
+                <span>{tx.keterangan}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Dompet:</span>
+                <span>{tx.dompet || '❌ Belum dipilih'}</span>
+              </div>
+            </div>
           </div>
         )
-        showButtons = true
       } else if (parsed.status === 'kurang_data') {
         const tx = parsed.transaksi[0]
         content = (
@@ -332,7 +307,6 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] bg-gradient-to-br from-background to-muted/20">
-      {/* Messages Area */}
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4 max-w-4xl mx-auto">
           {messages.length === 0 && (
@@ -366,13 +340,6 @@ export default function ChatPage() {
                           <Badge className="ml-2 bg-red-600">Pengeluaran</Badge>
                         </div>
                       </div>
-                      <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                        <span className="text-primary font-medium">🔄</span>
-                        <div>
-                          <span className="text-muted-foreground">"Transfer 500k dari BCA ke GoPay"</span>
-                          <Badge className="ml-2 bg-blue-600">Transfer</Badge>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -393,31 +360,25 @@ export default function ChatPage() {
                 <CardContent className="p-4 space-y-3">
                   {msg.content}
                   
-                  {/* Wallet Selection Buttons - Rendered dynamically */}
                   {msg.data?.status === 'kurang_data' && msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && (
                     <div className="space-y-2 pt-3 border-t">
                       <p className="text-xs font-semibold text-muted-foreground">Pilih dompet:</p>
-                      {wallets.length === 0 ? (
-                        <p className="text-xs text-amber-600">⚠️ Memuat daftar dompet...</p>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {wallets.map((wallet) => (
-                            <Button
-                              key={wallet}
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleWalletSelect(wallet, i)}
-                              className="text-xs h-8"
-                            >
-                              💳 {wallet}
-                            </Button>
-                          ))}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {wallets.map((wallet) => (
+                          <Button
+                            key={wallet}
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleWalletSelect(wallet, i)}
+                            className="text-xs h-8"
+                          >
+                            💳 {wallet}
+                          </Button>
+                        ))}
+                      </div>
                     </div>
                   )}
                   
-                  {/* Action Buttons */}
                   {msg.data?.status === 'lengkap' && (
                     <div className="flex gap-2 pt-3 border-t">
                       <Button 
@@ -442,7 +403,6 @@ export default function ChatPage() {
                     </div>
                   )}
                   
-                  {/* Timestamp */}
                   <div className={`text-xs ${msg.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                     {msg.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                   </div>
@@ -454,7 +414,6 @@ export default function ChatPage() {
         </div>
       </ScrollArea>
 
-      {/* Input Area */}
       <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-3">
           <Textarea
