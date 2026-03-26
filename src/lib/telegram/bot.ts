@@ -49,6 +49,7 @@ export function setupBotHandlers() {
       `<b>Commands:</b>\n` +
       `/start - Mulai\n` +
       `/help - Bantuan\n` +
+      `/edit_saldo - Edit saldo dompet\n` +
       `/saldo - Cek saldo dompet\n` +
       `/kategori - Lihat kategori\n` +
       `/dompet - Lihat dompet`,
@@ -64,7 +65,7 @@ export function setupBotHandlers() {
       `<b>Commands:</b>\n` +
       `/saldo - Cek saldo semua dompet\n` +
       `/saldo GoPay - Cek saldo GoPay\n` +
-      `/adjust_saldo GoPay 100000 - Tambah saldo`,
+      `/edit_saldo GoPay 100000 - Edit saldo`,
       { parse_mode: 'HTML' }
     )
   })
@@ -115,7 +116,7 @@ export function setupBotHandlers() {
     }
   })
 
-  bot.command('adjust_saldo', async (ctx) => {
+  bot.command('edit_saldo', async (ctx) => {
     if (!supabase) return
     
     const parts = ctx.message.text.split(' ').slice(1)
@@ -125,8 +126,8 @@ export function setupBotHandlers() {
     
     if (!walletName || isNaN(amount)) {
       return ctx.reply(
-        `❌ <b>Format:</b> /adjust_saldo NamaDompet Jumlah\n` +
-        `Contoh: /adjust_saldo GoPay 100000`,
+        `❌ <b>Format:</b> /edit_saldo NamaDompet Jumlah\n` +
+        `Contoh: /edit_saldo GoPay 100000`,
         { parse_mode: 'HTML' }
       )
     }
@@ -149,18 +150,44 @@ export function setupBotHandlers() {
       return ctx.reply(`❌ Saldo tidak boleh negatif! Saldo saat ini: Rp ${previousBalance.toLocaleString('id-ID')}`, { parse_mode: 'HTML' })
     }
     
-    const { error } = await supabase.rpc('adjust_wallet_balance', {
-      p_wallet_id: wallet.id,
-      p_amount: amount,
-      p_new_balance: newBalance,
-      p_change_type: 'adjustment',
-      p_user_id: ctx.from?.id.toString(),
-      p_description: `Manual adjustment via Telegram by ${ctx.from?.first_name || 'user'}`,
+    console.log('Adjusting balance:', {
+      wallet_id: wallet.id,
+      previous: previousBalance,
+      amount: amount,
+      new: newBalance,
+      user: ctx.from?.id.toString()
     })
     
-    if (error) {
-      return ctx.reply(`❌ Error: ${escapeHtml(error.message)}`, { parse_mode: 'HTML' })
+    // Direct update first
+    const { error: updateError } = await supabase
+      .from('wallets')
+      .update({ saldo: newBalance })
+      .eq('id', wallet.id)
+    
+    if (updateError) {
+      console.error('Update error:', updateError)
+      return ctx.reply(`❌ Error update saldo: ${escapeHtml(updateError.message)}`, { parse_mode: 'HTML' })
     }
+    
+    // Then log to history
+    const { error: historyError } = await supabase
+      .from('wallet_balance_history')
+      .insert({
+        wallet_id: wallet.id,
+        previous_balance: previousBalance,
+        new_balance: newBalance,
+        change_amount: amount,
+        change_type: 'adjustment',
+        created_by: ctx.from?.id.toString() || null,
+        description: `Manual adjustment via Telegram by ${ctx.from?.first_name || 'user'}`,
+      })
+    
+    if (historyError) {
+      console.error('History error:', historyError)
+      // Don't fail the command, just log warning
+    }
+    
+    console.log('Balance adjusted successfully:', newBalance)
     
     await ctx.reply(
       `✅ <b>Saldo Diupdate</b>\n\n` +
@@ -409,6 +436,13 @@ export function setupBotHandlers() {
           return ctx.answerCallbackQuery({ show_alert: true, text: 'Pilih dompet dulu!' })
         }
 
+        console.log('Saving transaction:', {
+          wallet_name: tx.dompet,
+          type: tx.jenis,
+          amount: tx.nominal,
+          user: userId
+        })
+
         const { data: walletData } = await supabase
           .from('wallets')
           .select('id, saldo')
@@ -417,12 +451,16 @@ export function setupBotHandlers() {
           .single()
         
         if (!walletData) {
+          console.error('Wallet not found:', tx.dompet)
           return ctx.answerCallbackQuery({ show_alert: true, text: 'Dompet tidak ditemukan' })
         }
+
+        console.log('Current wallet balance:', walletData.saldo)
 
         if (tx.jenis === 'pengeluaran' && tx.nominal) {
           const currentBalance = walletData.saldo || 0
           if (tx.nominal > currentBalance) {
+            console.log('Insufficient balance:', { current: currentBalance, needed: tx.nominal })
             return ctx.answerCallbackQuery({
               show_alert: true,
               text: `❌ Saldo tidak cukup! Saldo ${tx.dompet}: Rp ${currentBalance.toLocaleString('id-ID')}`
@@ -430,18 +468,8 @@ export function setupBotHandlers() {
           }
         }
 
-        let walletId = null
+        let walletId = walletData.id
         let categoryId = null
-        
-        if (tx.dompet) {
-          const { data: walletIdData } = await supabase
-            .from('wallets')
-            .select('id')
-            .eq('name', tx.dompet)
-            .eq('group_id', 1)
-            .single()
-          walletId = walletIdData?.id || null
-        }
         
         if (tx.kategori && tx.kategori !== 'Umum') {
           const { data: categoryIdData } = await supabase
@@ -453,7 +481,8 @@ export function setupBotHandlers() {
           categoryId = categoryIdData?.id || null
         }
 
-        const { error: txError } = await supabase
+        // Insert transaction first
+        const { data: transaction, error: txError } = await supabase
           .from('transactions')
           .insert({
             type: tx.jenis === 'pemasukan' ? 'income' : 'expense',
@@ -470,8 +499,14 @@ export function setupBotHandlers() {
           .select('id')
           .single()
         
-        if (txError) throw txError
+        if (txError) {
+          console.error('Transaction insert error:', txError)
+          throw txError
+        }
 
+        console.log('Transaction inserted, ID:', transaction?.id)
+
+        // Calculate and update balance
         let walletBalance = walletData.saldo || 0
         let changeAmount = 0
         let changeType = 'adjustment'
@@ -480,21 +515,47 @@ export function setupBotHandlers() {
           walletBalance += tx.nominal
           changeAmount = tx.nominal
           changeType = 'income'
+          console.log('Income: adding', tx.nominal, 'to balance')
         } else if (tx.jenis === 'pengeluaran' && tx.nominal) {
           walletBalance -= tx.nominal
           changeAmount = -tx.nominal
           changeType = 'expense'
+          console.log('Expense: subtracting', tx.nominal, 'from balance')
         }
 
-        await supabase.rpc('adjust_wallet_balance', {
-          p_wallet_id: walletId,
-          p_amount: changeAmount,
-          p_new_balance: walletBalance,
-          p_change_type: changeType,
-          p_transaction_id: txError?.details?.id,
-          p_user_id: userId,
-          p_description: `${changeType === 'income' ? 'Pemasukan' : 'Pengeluaran'}: ${tx.keterangan}`,
-        })
+        console.log('New balance:', walletBalance)
+
+        // Direct update to wallets table
+        const { error: updateError } = await supabase
+          .from('wallets')
+          .update({ saldo: walletBalance })
+          .eq('id', walletId)
+        
+        if (updateError) {
+          console.error('Balance update error:', updateError)
+          throw updateError
+        }
+
+        // Log to history
+        const { error: historyError } = await supabase
+          .from('wallet_balance_history')
+          .insert({
+            wallet_id: walletId,
+            previous_balance: walletData.saldo,
+            new_balance: walletBalance,
+            change_amount: changeAmount,
+            change_type: changeType,
+            transaction_id: transaction?.id || null,
+            created_by: userId || null,
+            description: `${changeType === 'income' ? 'Pemasukan' : 'Pengeluaran'}: ${tx.keterangan}`,
+          })
+        
+        if (historyError) {
+          console.error('History log error:', historyError)
+          // Don't fail, just log
+        }
+
+        console.log('Balance updated successfully:', walletBalance)
         
         await supabase.from('ai_confirmations').update({ status: 'confirmed' }).eq('id', confirmation.id)
         await ctx.answerCallbackQuery()
