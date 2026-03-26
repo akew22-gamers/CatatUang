@@ -19,13 +19,14 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   BarChart3,
+  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { Card, CardContent } from '@/components/ui/card'
 
-interface Wallet {
+interface WalletItem {
   id: number
   name: string
   saldo: number
@@ -51,7 +52,7 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [wallets, setWallets] = useState<Wallet[]>([
+  const [wallets, setWallets] = useState<WalletItem[]>([
     { id: 1, name: 'Cash', saldo: 0 },
     { id: 2, name: 'BCA', saldo: 0 },
   ])
@@ -113,9 +114,9 @@ export default function DashboardLayout({
     )
   }
 
-  const Sidebar = ({ mobile = false }) => (
-    <div className="flex flex-col h-full bg-white border-r border-gray-100">
-      <div className="p-6 border-b border-gray-50">
+  const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
+    <div className="flex flex-col h-full bg-white">
+      <div className="p-4 sm:p-5 border-b border-gray-100">
         <Link href="/dashboard" className="flex items-center gap-3 group">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:shadow-indigo-300 transition-shadow duration-200">
             <Wallet className="h-5 w-5 text-white" />
@@ -127,7 +128,7 @@ export default function DashboardLayout({
         </Link>
       </div>
       
-      <ScrollArea className="flex-1 px-3 py-4">
+      <ScrollArea className="flex-1 px-3 py-3">
         <nav className="space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon
@@ -150,7 +151,7 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        <div className="mt-8">
+        <div className="mt-6 sm:mt-8">
           <div className="px-3 mb-3">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
               Saldo Dompet
@@ -159,20 +160,20 @@ export default function DashboardLayout({
           <div className="space-y-2">
             {walletsLoading ? (
               <div className="px-3 space-y-2">
-                <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
-                <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                <div className="h-14 sm:h-16 bg-gray-100 rounded-xl animate-pulse" />
+                <div className="h-14 sm:h-16 bg-gray-100 rounded-xl animate-pulse" />
               </div>
             ) : (
               wallets.map((wallet) => (
-                <Card key={wallet.id} className="mx-3 border-gray-100 shadow-subtle hover:shadow-elevated transition-shadow duration-200">
-                  <CardContent className="p-3">
+                <Card key={wallet.id} className="border-gray-100 shadow-subtle hover:shadow-elevated transition-shadow duration-200">
+                  <CardContent className="p-2.5 sm:p-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
-                        <CreditCard className="h-4 w-4 text-indigo-600" />
+                      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0">
+                        <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-600" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">{wallet.name}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs sm:text-sm text-gray-500">
                           Rp {wallet.saldo?.toLocaleString('id-ID') || '0'}
                         </p>
                       </div>
@@ -185,9 +186,9 @@ export default function DashboardLayout({
         </div>
       </ScrollArea>
 
-      <div className="p-4 border-t border-gray-50 bg-gray-50/50">
+      <div className="p-3 sm:p-4 border-t border-gray-50 bg-gray-50/50">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
             <User className="h-4 w-4 text-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -200,7 +201,7 @@ export default function DashboardLayout({
         <Button
           variant="outline"
           onClick={handleLogout}
-          className="w-full justify-center text-gray-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-all duration-200 rounded-lg"
+          className="w-full justify-center text-gray-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-all duration-200 rounded-lg h-9 sm:h-10 text-sm"
         >
           <LogOut className="h-4 w-4 mr-2" />
           Keluar
@@ -211,8 +212,8 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-gradient-soft">
-      <aside className="hidden md:block w-[260px] sticky top-0 h-screen">
-        <Sidebar />
+      <aside className="hidden md:block w-[260px] sticky top-0 h-screen border-r border-gray-100">
+        <SidebarContent />
       </aside>
 
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -220,13 +221,14 @@ export default function DashboardLayout({
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-white/80 backdrop-blur shadow-subtle hover:shadow-elevated transition-all duration-200"
+            className="md:hidden fixed top-safe left-4 z-50 w-11 h-11 rounded-xl bg-white/90 backdrop-blur shadow-elevated hover:shadow-lg transition-all duration-200"
           >
             <Menu className="h-5 w-5 text-gray-600" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-[280px] border-gray-100">
-          <Sidebar mobile />
+        <SheetContent side="left" className="p-0 w-[280px] border-r border-gray-100">
+          <SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
+          <SidebarContent mobile />
         </SheetContent>
       </Sheet>
 

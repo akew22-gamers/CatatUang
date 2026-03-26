@@ -358,7 +358,7 @@ export function setupBotHandlers() {
     }
 
     try {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://catatuangeas.netlify.app'
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://catatuang-iota.vercel.app'
       
       const response = await fetch(`${appUrl}/api/parse-transaction`, {
         method: 'POST',

@@ -73,20 +73,20 @@ export default function ChatPage() {
       if (msg) {
         if (newStatus === 'saved') {
           msg.content = (
-            <div className="flex items-center gap-3 text-green-600">
-              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                <CheckCircle2 className="h-4 w-4" />
+            <div className="flex items-center gap-2 sm:gap-3 text-green-600">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </div>
-              <span className="font-semibold">Transaksi berhasil disimpan!</span>
+              <span className="font-semibold text-sm sm:text-base">Transaksi berhasil disimpan!</span>
             </div>
           )
         } else {
           msg.content = (
-            <div className="flex items-center gap-3 text-gray-500">
-              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                <XCircle className="h-4 w-4" />
+            <div className="flex items-center gap-2 sm:gap-3 text-gray-500">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </div>
-              <span>Transaksi dibatalkan. Silakan ketik transaksi baru.</span>
+              <span className="text-sm sm:text-base">Transaksi dibatalkan. Silakan ketik transaksi baru.</span>
             </div>
           )
         }
@@ -122,11 +122,11 @@ export default function ChatPage() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: (
-          <div className="flex items-center gap-3 text-red-600">
-            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-              <XCircle className="h-4 w-4" />
+          <div className="flex items-center gap-2 sm:gap-3 text-red-600">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+              <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
-            <span className="font-medium">Error: {error.message}</span>
+            <span className="font-medium text-sm sm:text-base">Error: {error.message}</span>
           </div>
         ),
         timestamp: new Date(),
@@ -181,11 +181,11 @@ export default function ChatPage() {
         setMessages(prev => [...prev, { 
           role: 'assistant', 
           content: (
-            <div className="flex items-center gap-3 text-red-600">
-              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-                <XCircle className="h-4 w-4" />
+            <div className="flex items-center gap-2 sm:gap-3 text-red-600">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </div>
-              <span className="font-medium">Error: {result.error}</span>
+              <span className="font-medium text-sm sm:text-base">Error: {result.error}</span>
             </div>
           ),
           timestamp: new Date()
@@ -200,31 +200,31 @@ export default function ChatPage() {
       if (parsed.status === 'lengkap') {
         const tx = parsed.transaksi[0]
         content = (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 text-green-600">
-              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                <CheckCircle2 className="h-4 w-4" />
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex items-center gap-2 sm:gap-3 text-green-600">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </div>
-              <span className="font-semibold text-gray-900">Transaksi Siap Disimpan</span>
+              <span className="font-semibold text-gray-900 text-sm sm:text-base">Transaksi Siap Disimpan</span>
             </div>
-            <div className="grid gap-3 text-sm bg-gray-50/50 rounded-xl p-4">
+            <div className="grid gap-2 sm:gap-3 text-sm bg-gray-50/50 rounded-xl p-3 sm:p-4">
               <div className="flex justify-between items-center">
-                <span className="text-gray-500">Jenis:</span>
-                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium">
+                <span className="text-gray-500 text-xs sm:text-sm">Jenis:</span>
+                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-xs">
                   {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-500">Jumlah:</span>
-                <span className="font-semibold text-gray-900">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+                <span className="text-gray-500 text-xs sm:text-sm">Jumlah:</span>
+                <span className="font-semibold text-gray-900 text-sm sm:text-base">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-500">Keterangan:</span>
-                <span className="text-gray-700">{tx.keterangan}</span>
+                <span className="text-gray-500 text-xs sm:text-sm">Keterangan:</span>
+                <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-500">Dompet:</span>
-                <span className="font-medium text-gray-900">{tx.dompet || 'Belum dipilih'}</span>
+                <span className="text-gray-500 text-xs sm:text-sm">Dompet:</span>
+                <span className="font-medium text-gray-900 text-xs sm:text-sm">{tx.dompet || 'Belum dipilih'}</span>
               </div>
             </div>
           </div>
@@ -232,35 +232,35 @@ export default function ChatPage() {
       } else if (parsed.status === 'kurang_data') {
         const tx = parsed.transaksi[0]
         content = (
-          <div className="space-y-4">
-            <div className="flex items-start gap-3 text-amber-600">
-              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                <AlertCircle className="h-4 w-4" />
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex items-start gap-2 sm:gap-3 text-amber-600">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </div>
               <div>
-                <span className="font-semibold text-gray-900">Data Belum Lengkap</span>
-                <p className="text-sm text-gray-600 mt-1 leading-relaxed">{parsed.pesan_balasan}</p>
+                <span className="font-semibold text-gray-900 text-sm sm:text-base">Data Belum Lengkap</span>
+                <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">{parsed.pesan_balasan}</p>
               </div>
             </div>
             {tx && (
-              <div className="grid gap-3 text-sm bg-gray-50/50 rounded-xl p-4">
+              <div className="grid gap-2 sm:gap-3 text-sm bg-gray-50/50 rounded-xl p-3 sm:p-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500">Jenis:</span>
-                  <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium">
+                  <span className="text-gray-500 text-xs sm:text-sm">Jenis:</span>
+                  <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-xs">
                     {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
                   </Badge>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500">Jumlah:</span>
-                  <span className="font-semibold text-gray-900">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+                  <span className="text-gray-500 text-xs sm:text-sm">Jumlah:</span>
+                  <span className="font-semibold text-gray-900 text-sm sm:text-base">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500">Keterangan:</span>
-                  <span className="text-gray-700">{tx.keterangan}</span>
+                  <span className="text-gray-500 text-xs sm:text-sm">Keterangan:</span>
+                  <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500">Dompet:</span>
-                  <span className="font-medium text-amber-600">Belum dipilih</span>
+                  <span className="text-gray-500 text-xs sm:text-sm">Dompet:</span>
+                  <span className="font-medium text-amber-600 text-xs sm:text-sm">Belum dipilih</span>
                 </div>
               </div>
             )}
@@ -268,19 +268,19 @@ export default function ChatPage() {
         )
       } else if (parsed.status === 'ambigu') {
         content = (
-          <div className="flex items-start gap-3 text-amber-600">
-            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-              <AlertCircle className="h-4 w-4" />
+          <div className="flex items-start gap-2 sm:gap-3 text-amber-600">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
             <div>
-              <span className="font-semibold text-gray-900">Data Ambigu</span>
-              <p className="text-sm text-gray-600 mt-1 leading-relaxed">{parsed.pesan_balasan}</p>
+              <span className="font-semibold text-gray-900 text-sm sm:text-base">Data Ambigu</span>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">{parsed.pesan_balasan}</p>
             </div>
           </div>
         )
       } else {
         content = (
-          <div className="text-sm text-gray-700 leading-relaxed">
+          <div className="text-xs sm:text-sm text-gray-700 leading-relaxed">
             {formatText(parsed.pesan_balasan)}
           </div>
         )
@@ -296,11 +296,11 @@ export default function ChatPage() {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: (
-          <div className="flex items-center gap-3 text-red-600">
-            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-              <XCircle className="h-4 w-4" />
+          <div className="flex items-center gap-2 sm:gap-3 text-red-600">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+              <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
-            <span className="font-medium">Error: {error.message}</span>
+            <span className="font-medium text-sm sm:text-base">Error: {error.message}</span>
           </div>
         ),
         timestamp: new Date()
@@ -311,49 +311,49 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 to-gray-100/50">
+    <div className="flex flex-col h-[100dvh] sm:h-screen bg-gradient-to-br from-gray-50 to-gray-100/50">
       <ScrollArea className="flex-1">
-        <div className="p-4 md:p-6 space-y-6 max-w-3xl mx-auto">
+        <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-3xl mx-auto">
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center min-h-[70vh] text-center space-y-8">
-              <div className="space-y-4">
-                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl shadow-indigo-200 mx-auto">
-                  <Sparkles className="h-10 w-10 text-white" />
+            <div className="flex flex-col items-center justify-center min-h-[60vh] sm:min-h-[70vh] text-center space-y-6 sm:space-y-8 px-4">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl shadow-indigo-200 mx-auto">
+                  <Sparkles className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
                 </div>
-                <div className="space-y-2">
-                  <h2 className="text-3xl font-bold text-gray-900">
+                <div className="space-y-1 sm:space-y-2">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
                     CatatUang AI Assistant
                   </h2>
-                  <p className="text-gray-500 text-lg">
+                  <p className="text-gray-500 text-base sm:text-lg">
                     Catat transaksi keuangan dengan bahasa natural
                   </p>
                 </div>
               </div>
               
-              <Card className="w-full max-w-md border-gray-100 shadow-subtle bg-white/80 backdrop-blur">
-                <CardContent className="pt-6 space-y-6">
-                  <div className="space-y-3">
-                    <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-indigo-500" />
+              <Card className="w-full max-w-sm sm:max-w-md border-gray-100 shadow-subtle bg-white/80 backdrop-blur">
+                <CardContent className="pt-4 sm:pt-6 space-y-4 sm:space-y-6">
+                  <div className="space-y-2 sm:space-y-3">
+                    <p className="text-xs sm:text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-500" />
                       Contoh penggunaan:
                     </p>
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 hover:shadow-sm transition-all duration-200 cursor-pointer group">
-                        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                          <TrendingUp className="h-4 w-4 text-green-600" />
+                    <div className="space-y-2 sm:space-y-3">
+                      <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 hover:shadow-sm transition-all duration-200 cursor-pointer group">
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                          <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
                         </div>
                         <div className="flex-1 text-left">
-                          <span className="text-gray-600 text-sm">Gaji masuk 15 juta ke BCA</span>
-                          <Badge className="ml-2 bg-green-100 text-green-700 hover:bg-green-100 border-0">Pemasukan</Badge>
+                          <span className="text-gray-600 text-xs sm:text-sm">Gaji masuk 15 juta ke BCA</span>
+                          <Badge className="ml-2 bg-green-100 text-green-700 hover:bg-green-100 border-0 text-xs">Pemasukan</Badge>
                         </div>
                       </div>
-                      <div className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-red-50 to-rose-50 border border-red-100 hover:shadow-sm transition-all duration-200 cursor-pointer group">
-                        <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                          <TrendingDown className="h-4 w-4 text-red-600" />
+                      <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-gradient-to-r from-red-50 to-rose-50 border border-red-100 hover:shadow-sm transition-all duration-200 cursor-pointer group">
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                          <TrendingDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600" />
                         </div>
                         <div className="flex-1 text-left">
-                          <span className="text-gray-600 text-sm">Beli makan siang 50rb pakai gopay</span>
-                          <Badge className="ml-2 bg-red-100 text-red-700 hover:bg-red-100 border-0">Pengeluaran</Badge>
+                          <span className="text-gray-600 text-xs sm:text-sm">Beli makan siang 50rb pakai gopay</span>
+                          <Badge className="ml-2 bg-red-100 text-red-700 hover:bg-red-100 border-0 text-xs">Pengeluaran</Badge>
                         </div>
                       </div>
                     </div>
@@ -370,29 +370,29 @@ export default function ChatPage() {
               style={{ animationDelay: `${i * 50}ms` }}
             >
               {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mr-3 mt-1 flex-shrink-0 shadow-md">
-                  <Sparkles className="h-4 w-4 text-white" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mr-2 sm:mr-3 mt-1 flex-shrink-0 shadow-md">
+                  <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
                 </div>
               )}
-              <Card className={`max-w-[85%] md:max-w-[75%] shadow-subtle border-0 ${
+              <Card className={`max-w-[90%] sm:max-w-[85%] md:max-w-[75%] shadow-subtle border-0 ${
                 msg.role === 'user' 
                   ? 'bg-indigo-600 text-white rounded-2xl rounded-br-md' 
                   : 'bg-white rounded-2xl rounded-bl-md'
               }`}>
-                <CardContent className={`p-4 ${msg.role === 'user' ? 'pb-2' : ''}`}>
+                <CardContent className={`p-3 sm:p-4 ${msg.role === 'user' ? 'pb-1 sm:pb-2' : ''}`}>
                   {msg.role === 'user' ? (
-                    <p className="leading-relaxed">{msg.content as string}</p>
+                    <p className="leading-relaxed text-sm sm:text-base">{msg.content as string}</p>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       {msg.content}
                       
                       {msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && (
-                        <div className="space-y-3 pt-4 border-t border-gray-100">
+                        <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t border-gray-100">
                           <p className="text-xs font-semibold text-gray-500 flex items-center gap-2">
-                            <Wallet className="h-3.5 w-3.5" />
+                            <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                             Pilih dompet:
                           </p>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-1.5 sm:gap-2">
                             {walletsLoaded ? (
                               wallets.map((wallet) => (
                                 <Button
@@ -400,16 +400,16 @@ export default function ChatPage() {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleWalletSelect(wallet, i)}
-                                  className="text-xs h-9 rounded-lg border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200"
+                                  className="text-xs h-8 sm:h-9 rounded-lg border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200"
                                 >
                                   {wallet}
                                 </Button>
                               ))
                             ) : (
-                              <div className="flex gap-2">
-                                <Skeleton className="h-9 w-20 rounded-lg" />
-                                <Skeleton className="h-9 w-20 rounded-lg" />
-                                <Skeleton className="h-9 w-20 rounded-lg" />
+                              <div className="flex gap-1.5 sm:gap-2">
+                                <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
+                                <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
+                                <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
                               </div>
                             )}
                           </div>
@@ -417,17 +417,17 @@ export default function ChatPage() {
                       )}
                       
                       {msg.data?.status === 'lengkap' && msg.data?.transaksi?.[0]?.dompet && (
-                        <div className="flex gap-3 pt-4 border-t border-gray-100">
+                        <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-100">
                           <Button 
                             size="sm" 
                             onClick={() => handleSave(msg.data, i)}
                             disabled={loading}
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl h-10 transition-all duration-200"
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl h-9 sm:h-10 transition-all duration-200 text-xs sm:text-sm"
                           >
                             {loading ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 animate-spin" />
                             ) : (
-                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                             )}
                             {loading ? 'Menyimpan...' : 'Simpan'}
                           </Button>
@@ -436,9 +436,9 @@ export default function ChatPage() {
                             variant="outline"
                             onClick={() => handleCancel(i)}
                             disabled={loading}
-                            className="flex-1 border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 rounded-xl h-10 transition-all duration-200"
+                            className="flex-1 border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 rounded-xl h-9 sm:h-10 transition-all duration-200 text-xs sm:text-sm"
                           >
-                            <XCircle className="h-4 w-4 mr-2" />
+                            <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                             Batal
                           </Button>
                         </div>
@@ -446,7 +446,7 @@ export default function ChatPage() {
                     </div>
                   )}
                   
-                  <div className={`text-xs mt-3 ${msg.role === 'user' ? 'text-white/70 text-right' : 'text-gray-400'}`}>
+                  <div className={`text-[10px] sm:text-xs mt-2 sm:mt-3 ${msg.role === 'user' ? 'text-white/70 text-right' : 'text-gray-400'}`}>
                     {msg.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </CardContent>
@@ -457,14 +457,14 @@ export default function ChatPage() {
         </div>
       </ScrollArea>
 
-      <div className="border-t border-gray-100 bg-white/80 backdrop-blur p-4 md:p-6">
+      <div className="border-t border-gray-100 bg-white/80 backdrop-blur p-3 sm:p-4 md:p-6 safe-area-bottom">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className="relative flex gap-3 items-end bg-white rounded-2xl border border-gray-200 shadow-subtle hover:shadow-elevated transition-shadow duration-200 p-2">
+          <div className="relative flex gap-2 sm:gap-3 items-end bg-white rounded-2xl border border-gray-200 shadow-subtle hover:shadow-elevated transition-shadow duration-200 p-2">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ketik transaksi (contoh: Beli kopi 25rb dari GoPay)..."
-              className="flex-1 resize-none min-h-[56px] max-h-[200px] border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-700 placeholder:text-gray-400 py-3 px-3"
+              className="flex-1 resize-none min-h-[48px] sm:min-h-[56px] max-h-[120px] sm:max-h-[200px] border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-700 placeholder:text-gray-400 py-2.5 sm:py-3 px-2 sm:px-3 text-sm sm:text-base"
               rows={1}
               disabled={loading}
               onKeyDown={(e) => {
@@ -478,16 +478,16 @@ export default function ChatPage() {
               type="submit" 
               size="icon"
               disabled={loading || !input.trim()}
-              className="w-11 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
             >
               {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
               ) : (
-                <Send className="h-5 w-5" />
+                <Send className="h-4 w-4 sm:h-5 sm:w-5" />
               )}
             </Button>
           </div>
-          <p className="text-xs text-gray-400 text-center mt-3">
+          <p className="text-[10px] sm:text-xs text-gray-400 text-center mt-2 sm:mt-3">
             Tekan Enter untuk mengirim, Shift + Enter untuk baris baru
           </p>
         </form>
