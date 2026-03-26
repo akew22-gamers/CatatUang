@@ -1,6 +1,7 @@
 import { Bot } from 'grammy'
 import { createClient } from '@supabase/supabase-js'
 import { ParseResult } from '@/lib/ai/parser'
+import { getTransactionReport, ReportSummary } from './reports'
 
 const token = process.env.TELEGRAM_BOT_TOKEN
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -28,6 +29,36 @@ console.log('Supabase client initialized:', !!supabase)
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+async function sendReport(ctx: any, report: ReportSummary) {
+  let text = `📊 <b>Laporan ${report.period}</b>\n\n`
+  
+  text += `<b>💰 Ringkasan:</b>\n`
+  text += `Pemasukan: <b>Rp ${report.totalIncome.toLocaleString('id-ID')}</b>\n`
+  text += `Pengeluaran: <b>Rp ${report.totalExpense.toLocaleString('id-ID')}</b>\n`
+  text += `Saldo: <b>Rp ${report.balance.toLocaleString('id-ID')}</b>\n`
+  text += `Transaksi: <b>${report.transactionCount}</b>\n\n`
+  
+  if (report.byCategory.length > 0) {
+    text += `<b>📁 Berdasarkan Kategori:</b>\n`
+    report.byCategory.forEach(cat => {
+      const percentage = report.totalExpense > 0 
+        ? ((cat.amount / report.totalExpense) * 100).toFixed(1)
+        : 0
+      text += `• ${escapeHtml(cat.name)}: Rp ${cat.amount.toLocaleString('id-ID')} (${percentage}%)\n`
+    })
+    text += `\n`
+  }
+  
+  if (report.byWallet.length > 0) {
+    text += `<b>💳 Berdasarkan Dompet:</b>\n`
+    report.byWallet.forEach(wallet => {
+      text += `• ${escapeHtml(wallet.name)}: Rp ${wallet.amount.toLocaleString('id-ID')}\n`
+    })
+  }
+  
+  await ctx.reply(text, { parse_mode: 'HTML' })
 }
 
 export function setupBotHandlers() {
@@ -64,6 +95,10 @@ export function setupBotHandlers() {
       `<b>🔹 Manajemen Transaksi:</b>\n` +
       `/start - Mulai bot\n` +
       `Ketik natural: "Beli kopi 25rb dari GoPay"\n\n` +
+      `<b>🔹 Laporan Keuangan:</b>\n` +
+      `/hari_ini - Laporan hari ini\n` +
+      `/minggu_ini - Laporan minggu ini\n` +
+      `/bulan_ini - Laporan bulan ini\n\n` +
       `<b>🔹 Cek Saldo:</b>\n` +
       `/saldo - Cek semua saldo dompet\n` +
       `/saldo GoPay - Cek saldo GoPay\n\n` +
@@ -226,6 +261,48 @@ export function setupBotHandlers() {
     const { error } = await supabase.from('wallets').insert({ name: args.trim(), group_id: 1, saldo: 0 })
     if (error) return ctx.reply(`❌ Error: ${escapeHtml(error.message)}`, { parse_mode: 'HTML' })
     await ctx.reply(`✅ Dompet "<b>${escapeHtml(args.trim())}</b>" ditambahkan!`, { parse_mode: 'HTML' })
+  })
+
+  bot.command('hari_ini', async (ctx) => {
+    const userId = ctx.from?.id.toString()
+    if (!userId) return
+    
+    await ctx.reply('⏳ <b>Mengambil laporan hari ini...</b>', { parse_mode: 'HTML' })
+    
+    const report = await getTransactionReport(userId, 1)
+    if (!report) {
+      return ctx.reply('❌ Gagal mengambil laporan', { parse_mode: 'HTML' })
+    }
+    
+    await sendReport(ctx, report)
+  })
+
+  bot.command('minggu_ini', async (ctx) => {
+    const userId = ctx.from?.id.toString()
+    if (!userId) return
+    
+    await ctx.reply('⏳ <b>Mengambil laporan minggu ini...</b>', { parse_mode: 'HTML' })
+    
+    const report = await getTransactionReport(userId, 7)
+    if (!report) {
+      return ctx.reply('❌ Gagal mengambil laporan', { parse_mode: 'HTML' })
+    }
+    
+    await sendReport(ctx, report)
+  })
+
+  bot.command('bulan_ini', async (ctx) => {
+    const userId = ctx.from?.id.toString()
+    if (!userId) return
+    
+    await ctx.reply('⏳ <b>Mengambil laporan bulan ini...</b>', { parse_mode: 'HTML' })
+    
+    const report = await getTransactionReport(userId, 30)
+    if (!report) {
+      return ctx.reply('❌ Gagal mengambil laporan', { parse_mode: 'HTML' })
+    }
+    
+    await sendReport(ctx, report)
   })
 
   bot.on('message:text', async (ctx) => {
