@@ -35,13 +35,10 @@ export default function ChatPage() {
 
   const loadWallets = async () => {
     try {
-      const { data } = await fetch('/api/auth/user').then(r => r.json())
-      if (!data?.user) {
-        console.log('No user found')
-        return
-      }
-      
+      console.log('Loading wallets...')
       const supabase = createClient()
+      
+      // Try direct query first
       const { data: walletData, error } = await supabase
         .from('wallets')
         .select('name')
@@ -49,12 +46,12 @@ export default function ChatPage() {
         .order('name')
       
       if (error) {
-        console.error('Error fetching wallets:', error)
+        console.error('Error fetching wallets:', error.message, error.details)
         return
       }
       
       const walletNames = walletData?.map(w => w.name) || []
-      console.log('Loaded wallets:', walletNames)
+      console.log('Loaded wallets:', walletNames, 'Count:', walletNames.length)
       setWallets(walletNames)
     } catch (error) {
       console.error('Error loading wallets:', error)
