@@ -100,15 +100,21 @@ export default function ChatPage() {
   const handleSave = async (data: any, messageIndex: number) => {
     setLoading(true)
     try {
-      const { data: { user } } = await fetch('/api/auth/user').then(r => r.json())
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
       
+      console.log('Saving transaction:', {
+        user_id: user?.id,
+        parsed_data: data,
+      })
+
       const response = await fetch('/api/confirmations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: user?.id || 'anonymous',
           group_id: 1,
-          original_message: messages[messageIndex - 1]?.content,
+          original_message: messages[messageIndex - 1]?.content as string,
           parsed_data: data,
         }),
       })
@@ -118,6 +124,7 @@ export default function ChatPage() {
 
       updateMessageStatus(messageIndex, 'saved')
     } catch (error: any) {
+      console.error('Save error:', error)
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: (
