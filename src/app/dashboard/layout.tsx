@@ -16,6 +16,9 @@ import {
   TrendingUp,
   TrendingDown,
   User,
+  ArrowUpRight,
+  ArrowDownLeft,
+  BarChart3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -30,7 +33,11 @@ interface Wallet {
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: MessageSquare },
-  { href: '/transactions', label: 'Riwayat', icon: History },
+  { href: '/transactions', label: 'Riwayat Transaksi', icon: History },
+  { href: '/income', label: 'Pemasukan', icon: TrendingUp },
+  { href: '/expense', label: 'Pengeluaran', icon: TrendingDown },
+  { href: '/transfer', label: 'Transfer', icon: ArrowUpRight },
+  { href: '/reports', label: 'Laporan', icon: BarChart3 },
   { href: '/settings', label: 'Pengaturan', icon: Settings },
 ]
 
