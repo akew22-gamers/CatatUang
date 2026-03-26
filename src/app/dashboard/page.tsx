@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -37,8 +38,6 @@ export default function ChatPage() {
       const { data } = await fetch('/api/auth/user').then(r => r.json())
       if (!data?.user) return
       
-      // Fetch from Supabase directly
-      const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
       const { data: walletData } = await supabase
         .from('wallets')
@@ -65,7 +64,33 @@ export default function ChatPage() {
     ))
   }
 
-  const handleSave = async (data: any) => {
+  const updateMessageStatus = (messageIndex: number, newStatus: 'saved' | 'cancelled') => {
+    setMessages(prev => {
+      const newMessages = [...prev]
+      const msg = newMessages[messageIndex]
+      if (msg) {
+        if (newStatus === 'saved') {
+          msg.content = (
+            <div className="flex items-center gap-2 text-green-600">
+              <CheckCircle2 className="h-5 w-5" />
+              <span className="font-semibold">Transaksi berhasil disimpan!</span>
+            </div>
+          )
+        } else {
+          msg.content = (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <XCircle className="h-5 w-5" />
+              <span>Transaksi dibatalkan. Silakan ketik transaksi baru.</span>
+            </div>
+          )
+        }
+        msg.data = undefined
+      }
+      return newMessages
+    })
+  }
+
+  const handleSave = async (data: any, messageIndex: number) => {
     setLoading(true)
     try {
       const { data: { user } } = await fetch('/api/auth/user').then(r => r.json())
@@ -76,7 +101,7 @@ export default function ChatPage() {
         body: JSON.stringify({
           user_id: user?.id || 'anonymous',
           group_id: 1,
-          original_message: messages[messages.length - 2]?.content,
+          original_message: messages[messageIndex - 1]?.content,
           parsed_data: data,
         }),
       })
@@ -84,16 +109,7 @@ export default function ChatPage() {
       const result = await response.json()
       if (result.error) throw new Error(result.error)
 
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: (
-          <div className="flex items-center gap-2 text-green-600">
-            <CheckCircle2 className="h-5 w-5" />
-            <span className="font-semibold">Transaksi berhasil disimpan!</span>
-          </div>
-        ),
-        timestamp: new Date(),
-      }])
+      updateMessageStatus(messageIndex, 'saved')
     } catch (error: any) {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -110,20 +126,11 @@ export default function ChatPage() {
     }
   }
 
-  const handleCancel = () => {
-    setMessages(prev => [...prev, {
-      role: 'assistant',
-      content: (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <XCircle className="h-5 w-5" />
-          <span>Transaksi dibatalkan. Silakan ketik transaksi baru.</span>
-        </div>
-      ),
-      timestamp: new Date(),
-    }])
+  const handleCancel = (messageIndex: number) => {
+    updateMessageStatus(messageIndex, 'cancelled')
   }
 
-  const handleWalletSelect = async (walletName: string, messageIndex: number) => {
+  const handleWalletSelect = (walletName: string, messageIndex: number) => {
     setMessages(prev => {
       const newMessages = [...prev]
       const msg = newMessages[messageIndex]
@@ -144,6 +151,8 @@ export default function ChatPage() {
     const userMessage = input.trim()
     setInput('')
     setLoading(true)
+    
+    const userMessageIndex = messages.length
     setMessages(prev => [...prev, { 
       role: 'user', 
       content: userMessage,
@@ -174,6 +183,7 @@ export default function ChatPage() {
       }
 
       const parsed = result.data
+      const messageIndex = messages.length + 1
       
       // Render message based on status
       let content: React.ReactNode = null
@@ -241,6 +251,24 @@ export default function ChatPage() {
                   <span className="text-muted-foreground">Dompet:</span>
                   <span>{tx.dompet || '❌ Belum dipilih'}</span>
                 </div>
+                {!tx.dompet && wallets.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <p className="text-xs text-muted-foreground">Pilih dompet:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {wallets.map((wallet) => (
+                        <Button
+                          key={wallet}
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleWalletSelect(wallet, messageIndex)}
+                          className="text-xs"
+                        >
+                          💳 {wallet}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -353,7 +381,7 @@ export default function ChatPage() {
                     <div className="flex gap-2 pt-3 border-t">
                       <Button 
                         size="sm" 
-                        onClick={() => handleSave(msg.data)}
+                        onClick={() => handleSave(msg.data, i)}
                         disabled={loading}
                         className="flex-1 bg-green-600 hover:bg-green-700"
                       >
@@ -363,7 +391,7 @@ export default function ChatPage() {
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={handleCancel}
+                        onClick={() => handleCancel(i)}
                         disabled={loading}
                         className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
                       >
