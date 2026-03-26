@@ -135,9 +135,8 @@ export function setupBotHandlers() {
     }
     
     const userId = ctx.from?.id.toString()
-    const txId = `edit_saldo_${userId}_${Date.now()}`
+    const txId = `es_${userId}_${Date.now()}`
     
-    // Save state to ai_confirmations
     await supabase.from('ai_confirmations').insert({
       user_id: userId,
       group_id: 1,
@@ -156,8 +155,16 @@ export function setupBotHandlers() {
     
     const keyboard: any[][] = []
     for (let i = 0; i < wallets.length; i += 2) {
-      const row = [{ text: `💳 ${wallets[i].name}`, callback_data: `editwallet_${txId}_${wallets[i].id}_${wallets[i].name}` }]
-      if (wallets[i + 1]) row.push({ text: `💳 ${wallets[i + 1].name}`, callback_data: `editwallet_${txId}_${wallets[i + 1].id}_${wallets[i + 1].name}` })
+      const row = [{ 
+        text: `💳 ${wallets[i].name}`, 
+        callback_data: `ew_${wallets[i].id}_${wallets[i].name}` 
+      }]
+      if (wallets[i + 1]) {
+        row.push({ 
+          text: `💳 ${wallets[i + 1].name}`, 
+          callback_data: `ew_${wallets[i + 1].id}_${wallets[i + 1].name}` 
+        })
+      }
       keyboard.push(row)
     }
     
@@ -208,7 +215,6 @@ export function setupBotHandlers() {
     const userId = ctx.from?.id.toString()
     console.log('Message from:', userId, 'Text:', message)
 
-    // Check if user is in edit_saldo flow (step 2: input nominal)
     if (!message.startsWith('/')) {
       const { data: editState } = await supabase
         .from('ai_confirmations')
@@ -223,8 +229,7 @@ export function setupBotHandlers() {
         .single()
       
       if (editState) {
-        // User is inputting nominal for edit_saldo
-        const nominalStr = message.replace(/[.,]/g, '').trim()
+        const nominalStr = message.replace(/[^0-9-]/g, '').trim()
         const nominal = parseInt(nominalStr)
         const parsedData = editState.parsed_data as any
         
@@ -238,9 +243,9 @@ export function setupBotHandlers() {
           )
         }
         
-        const walletId = parsedData.wallet_id
+        const walletId = parseInt(parsedData.wallet_id)
         const walletName = parsedData.wallet_name
-        const previousBalance = parsedData.previous_balance || 0
+        const previousBalance = parseFloat(parsedData.previous_balance) || 0
         const newBalance = previousBalance + nominal
         
         if (newBalance < 0) {
@@ -254,7 +259,6 @@ export function setupBotHandlers() {
           )
         }
         
-        // Update balance
         const { error: updateError } = await supabase
           .from('wallets')
           .update({ saldo: newBalance })
@@ -264,7 +268,6 @@ export function setupBotHandlers() {
           return ctx.reply(`❌ Error: ${escapeHtml(updateError.message)}`, { parse_mode: 'HTML' })
         }
         
-        // Log to history
         await supabase
           .from('wallet_balance_history')
           .insert({
@@ -277,7 +280,6 @@ export function setupBotHandlers() {
             description: `Manual adjustment via Telegram by ${ctx.from?.first_name || 'user'}`,
           })
         
-        // Clear state
         await supabase.from('ai_confirmations').update({ status: 'confirmed' }).eq('id', editState.id)
         
         await ctx.reply(
@@ -292,7 +294,6 @@ export function setupBotHandlers() {
       }
     }
 
-    // Handle regular transaction messages
     try {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://catatuang-three.vercel.app'
       
@@ -384,21 +385,18 @@ export function setupBotHandlers() {
     }
   })
 
-  // Handle edit wallet selection
   bot.on('callback_query:data', async (ctx) => {
     const data = ctx.callbackQuery.data
+    console.log('Callback data:', data)
     
-    // Handle edit_saldo wallet selection
-    if (data.startsWith('editwallet_')) {
+    if (data.startsWith('ew_')) {
       const parts = data.split('_')
-      const txId = parts[1]
-      const walletId = parts[2]
-      const walletName = parts[3]
+      const walletId = parts[1]
+      const walletName = parts.slice(2).join('_')
       const userId = ctx.from?.id.toString()
       
-      console.log('Edit wallet selected:', walletId, walletName, userId)
+      console.log('Edit wallet selected:', { walletId, walletName, userId })
       
-      // Update state to step 2: input nominal
       const { data: editState } = await supabase
         .from('ai_confirmations')
         .select('*')
@@ -450,10 +448,9 @@ export function setupBotHandlers() {
       return
     }
 
-    // Existing transaction flow
     const parts = data.split('_')
     const action = parts[0], txId = parts[1], selectedValue = parts[2]
-    console.log('Callback:', action, txId, 'value:', selectedValue)
+    console.log('Transaction callback:', action, txId, 'value:', selectedValue)
 
     if (!supabase) return ctx.answerCallbackQuery({ show_alert: true, text: 'DB error' })
 
@@ -602,7 +599,6 @@ export function setupBotHandlers() {
           categoryId = categoryIdData?.id || null
         }
 
-        // Insert transaction first
         const { data: transaction, error: txError } = await supabase
           .from('transactions')
           .insert({
@@ -627,7 +623,6 @@ export function setupBotHandlers() {
 
         console.log('Transaction inserted, ID:', transaction?.id)
 
-        // Calculate and update balance
         let walletBalance = walletData.saldo || 0
         let changeAmount = 0
         let changeType = 'adjustment'
@@ -646,7 +641,6 @@ export function setupBotHandlers() {
 
         console.log('New balance:', walletBalance)
 
-        // Direct update to wallets table
         const { error: updateError } = await supabase
           .from('wallets')
           .update({ saldo: walletBalance })
@@ -657,7 +651,6 @@ export function setupBotHandlers() {
           throw updateError
         }
 
-        // Log to history
         const { error: historyError } = await supabase
           .from('wallet_balance_history')
           .insert({
@@ -673,7 +666,6 @@ export function setupBotHandlers() {
         
         if (historyError) {
           console.error('History log error:', historyError)
-          // Don't fail, just log
         }
 
         console.log('Balance updated successfully:', walletBalance)
