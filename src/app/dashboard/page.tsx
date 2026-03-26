@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send } from 'lucide-react'
+import { Send, Sparkles, TrendingUp, TrendingDown, Wallet, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { createClient } from '@/lib/supabase/client'
 
 interface Message {
@@ -38,7 +38,6 @@ export default function ChatPage() {
   }, [messages])
 
   const loadWallets = async () => {
-    console.log('[Wallet Loader] Starting...')
     const supabase = createClient()
     
     const { data: walletData, error } = await supabase
@@ -49,20 +48,17 @@ export default function ChatPage() {
     
     if (!error && walletData && walletData.length > 0) {
       const walletNames = walletData.map(w => w.name)
-      console.log('[Wallet Loader] Loaded from DB:', walletNames)
       setWallets(walletNames)
-    } else {
-      console.log('[Wallet Loader] Using fallback wallets')
     }
     setWalletsLoaded(true)
   }
 
   const formatText = (text: string) => {
     return text.split('\n').map((line, i) => (
-      <p key={i} className="min-h-[1.5rem]">
+      <p key={i} className="min-h-[1.5rem] leading-relaxed">
         {line.split(/(\*\*.*?\*\*)/).map((part, j) => {
           if (part.startsWith('**') && part.endsWith('**')) {
-            return <strong key={j} className="font-semibold">{part.slice(2, -2)}</strong>
+            return <strong key={j} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>
           }
           return part
         })}
@@ -77,15 +73,19 @@ export default function ChatPage() {
       if (msg) {
         if (newStatus === 'saved') {
           msg.content = (
-            <div className="flex items-center gap-2 text-green-600">
-              <CheckCircle2 className="h-5 w-5" />
+            <div className="flex items-center gap-3 text-green-600">
+              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle2 className="h-4 w-4" />
+              </div>
               <span className="font-semibold">Transaksi berhasil disimpan!</span>
             </div>
           )
         } else {
           msg.content = (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <XCircle className="h-5 w-5" />
+            <div className="flex items-center gap-3 text-gray-500">
+              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <XCircle className="h-4 w-4" />
+              </div>
               <span>Transaksi dibatalkan. Silakan ketik transaksi baru.</span>
             </div>
           )
@@ -101,11 +101,6 @@ export default function ChatPage() {
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      
-      console.log('Saving transaction:', {
-        user_id: user?.id,
-        parsed_data: data,
-      })
 
       const response = await fetch('/api/confirmations', {
         method: 'POST',
@@ -127,9 +122,11 @@ export default function ChatPage() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: (
-          <div className="flex items-center gap-2 text-red-600">
-            <XCircle className="h-5 w-5" />
-            <span>❌ Error: {error.message}</span>
+          <div className="flex items-center gap-3 text-red-600">
+            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+              <XCircle className="h-4 w-4" />
+            </div>
+            <span className="font-medium">Error: {error.message}</span>
           </div>
         ),
         timestamp: new Date(),
@@ -144,7 +141,6 @@ export default function ChatPage() {
   }
 
   const handleWalletSelect = (walletName: string, messageIndex: number) => {
-    console.log('[Wallet Select] Selected:', walletName, 'for message:', messageIndex)
     setMessages(prev => {
       const newMessages = [...prev]
       const msg = newMessages[messageIndex]
@@ -153,7 +149,6 @@ export default function ChatPage() {
           tx.dompet = walletName
         }
         msg.data.status = 'lengkap'
-        console.log('[Wallet Select] Updated message data:', msg.data)
       }
       return newMessages
     })
@@ -186,9 +181,11 @@ export default function ChatPage() {
         setMessages(prev => [...prev, { 
           role: 'assistant', 
           content: (
-            <div className="flex items-center gap-2 text-red-600">
-              <XCircle className="h-5 w-5" />
-              <span>❌ Error: {result.error}</span>
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                <XCircle className="h-4 w-4" />
+              </div>
+              <span className="font-medium">Error: {result.error}</span>
             </div>
           ),
           timestamp: new Date()
@@ -203,29 +200,31 @@ export default function ChatPage() {
       if (parsed.status === 'lengkap') {
         const tx = parsed.transaksi[0]
         content = (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-green-600">
-              <CheckCircle2 className="h-5 w-5" />
-              <span className="font-semibold">Transaksi Siap Disimpan</span>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 text-green-600">
+              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle2 className="h-4 w-4" />
+              </div>
+              <span className="font-semibold text-gray-900">Transaksi Siap Disimpan</span>
             </div>
-            <div className="grid gap-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Jenis:</span>
-                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'}>
+            <div className="grid gap-3 text-sm bg-gray-50/50 rounded-xl p-4">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Jenis:</span>
+                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium">
                   {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
                 </Badge>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Jumlah:</span>
-                <span className="font-semibold">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Jumlah:</span>
+                <span className="font-semibold text-gray-900">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Keterangan:</span>
-                <span>{tx.keterangan}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Keterangan:</span>
+                <span className="text-gray-700">{tx.keterangan}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Dompet:</span>
-                <span>{tx.dompet || '❌ Belum dipilih'}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Dompet:</span>
+                <span className="font-medium text-gray-900">{tx.dompet || 'Belum dipilih'}</span>
               </div>
             </div>
           </div>
@@ -233,33 +232,35 @@ export default function ChatPage() {
       } else if (parsed.status === 'kurang_data') {
         const tx = parsed.transaksi[0]
         content = (
-          <div className="space-y-3">
-            <div className="flex items-start gap-2 text-amber-600">
-              <AlertCircle className="h-5 w-5 mt-0.5" />
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 text-amber-600">
+              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="h-4 w-4" />
+              </div>
               <div>
-                <span className="font-semibold">Data Belum Lengkap</span>
-                <p className="text-sm mt-1">{parsed.pesan_balasan}</p>
+                <span className="font-semibold text-gray-900">Data Belum Lengkap</span>
+                <p className="text-sm text-gray-600 mt-1 leading-relaxed">{parsed.pesan_balasan}</p>
               </div>
             </div>
             {tx && (
-              <div className="grid gap-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Jenis:</span>
-                  <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'}>
+              <div className="grid gap-3 text-sm bg-gray-50/50 rounded-xl p-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Jenis:</span>
+                  <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium">
                     {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
                   </Badge>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Jumlah:</span>
-                  <span className="font-semibold">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Jumlah:</span>
+                  <span className="font-semibold text-gray-900">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Keterangan:</span>
-                  <span>{tx.keterangan}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Keterangan:</span>
+                  <span className="text-gray-700">{tx.keterangan}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Dompet:</span>
-                  <span>{tx.dompet || '❌ Belum dipilih'}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Dompet:</span>
+                  <span className="font-medium text-amber-600">Belum dipilih</span>
                 </div>
               </div>
             )}
@@ -267,17 +268,19 @@ export default function ChatPage() {
         )
       } else if (parsed.status === 'ambigu') {
         content = (
-          <div className="flex items-start gap-2 text-amber-600">
-            <AlertCircle className="h-5 w-5 mt-0.5" />
+          <div className="flex items-start gap-3 text-amber-600">
+            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="h-4 w-4" />
+            </div>
             <div>
-              <span className="font-semibold">Data Ambigu</span>
-              <p className="text-sm mt-1">{parsed.pesan_balasan}</p>
+              <span className="font-semibold text-gray-900">Data Ambigu</span>
+              <p className="text-sm text-gray-600 mt-1 leading-relaxed">{parsed.pesan_balasan}</p>
             </div>
           </div>
         )
       } else {
         content = (
-          <div className="text-sm">
+          <div className="text-sm text-gray-700 leading-relaxed">
             {formatText(parsed.pesan_balasan)}
           </div>
         )
@@ -293,9 +296,11 @@ export default function ChatPage() {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: (
-          <div className="flex items-center gap-2 text-red-600">
-            <XCircle className="h-5 w-5" />
-            <span>❌ Error: {error.message}</span>
+          <div className="flex items-center gap-3 text-red-600">
+            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+              <XCircle className="h-4 w-4" />
+            </div>
+            <span className="font-medium">Error: {error.message}</span>
           </div>
         ),
         timestamp: new Date()
@@ -306,38 +311,49 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-gradient-to-br from-background to-muted/20">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 to-gray-100/50">
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4 max-w-4xl mx-auto">
+        <div className="p-4 md:p-6 space-y-6 max-w-3xl mx-auto">
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
-              <div className="space-y-2">
-                <div className="text-6xl mb-4">💬</div>
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                  CatatUang AI Assistant
-                </h2>
-                <p className="text-muted-foreground text-lg">
-                  Catat transaksi keuangan dengan bahasa natural
-                </p>
+            <div className="flex flex-col items-center justify-center min-h-[70vh] text-center space-y-8">
+              <div className="space-y-4">
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl shadow-indigo-200 mx-auto">
+                  <Sparkles className="h-10 w-10 text-white" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-bold text-gray-900">
+                    CatatUang AI Assistant
+                  </h2>
+                  <p className="text-gray-500 text-lg">
+                    Catat transaksi keuangan dengan bahasa natural
+                  </p>
+                </div>
               </div>
               
-              <Card className="w-full max-w-md border-muted bg-card/50 backdrop-blur-sm">
-                <CardContent className="pt-6 space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Contoh penggunaan:</p>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                        <span className="text-primary font-medium">💰</span>
-                        <div>
-                          <span className="text-muted-foreground">"Gaji masuk 15 juta ke BCA"</span>
-                          <Badge className="ml-2 bg-green-600">Pemasukan</Badge>
+              <Card className="w-full max-w-md border-gray-100 shadow-subtle bg-white/80 backdrop-blur">
+                <CardContent className="pt-6 space-y-6">
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-indigo-500" />
+                      Contoh penggunaan:
+                    </p>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 hover:shadow-sm transition-all duration-200 cursor-pointer group">
+                        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                          <TrendingUp className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <span className="text-gray-600 text-sm">Gaji masuk 15 juta ke BCA</span>
+                          <Badge className="ml-2 bg-green-100 text-green-700 hover:bg-green-100 border-0">Pemasukan</Badge>
                         </div>
                       </div>
-                      <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                        <span className="text-primary font-medium">💳</span>
-                        <div>
-                          <span className="text-muted-foreground">"Beli makan siang 50rb pakai gopay"</span>
-                          <Badge className="ml-2 bg-red-600">Pengeluaran</Badge>
+                      <div className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-red-50 to-rose-50 border border-red-100 hover:shadow-sm transition-all duration-200 cursor-pointer group">
+                        <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                          <TrendingDown className="h-4 w-4 text-red-600" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <span className="text-gray-600 text-sm">Beli makan siang 50rb pakai gopay</span>
+                          <Badge className="ml-2 bg-red-100 text-red-700 hover:bg-red-100 border-0">Pengeluaran</Badge>
                         </div>
                       </div>
                     </div>
@@ -350,62 +366,87 @@ export default function ChatPage() {
           {messages.map((msg, i) => (
             <div
               key={i}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
+              style={{ animationDelay: `${i * 50}ms` }}
             >
-              <Card className={`max-w-2xl shadow-lg ${
+              {msg.role === 'assistant' && (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mr-3 mt-1 flex-shrink-0 shadow-md">
+                  <Sparkles className="h-4 w-4 text-white" />
+                </div>
+              )}
+              <Card className={`max-w-[85%] md:max-w-[75%] shadow-subtle border-0 ${
                 msg.role === 'user' 
-                  ? 'bg-primary text-primary-foreground border-primary' 
-                  : 'bg-card border-muted'
+                  ? 'bg-indigo-600 text-white rounded-2xl rounded-br-md' 
+                  : 'bg-white rounded-2xl rounded-bl-md'
               }`}>
-                <CardContent className="p-4 space-y-3">
-                  {msg.content}
-                  
-                  {/* Wallet Selection Buttons - Show whenever dompet is null */}
-                  {msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && (
-                    <div className="space-y-2 pt-3 border-t">
-                      <p className="text-xs font-semibold text-muted-foreground">Pilih dompet:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {wallets.map((wallet) => (
-                          <Button
-                            key={wallet}
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleWalletSelect(wallet, i)}
-                            className="text-xs h-8"
+                <CardContent className={`p-4 ${msg.role === 'user' ? 'pb-2' : ''}`}>
+                  {msg.role === 'user' ? (
+                    <p className="leading-relaxed">{msg.content as string}</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {msg.content}
+                      
+                      {msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && (
+                        <div className="space-y-3 pt-4 border-t border-gray-100">
+                          <p className="text-xs font-semibold text-gray-500 flex items-center gap-2">
+                            <Wallet className="h-3.5 w-3.5" />
+                            Pilih dompet:
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {walletsLoaded ? (
+                              wallets.map((wallet) => (
+                                <Button
+                                  key={wallet}
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleWalletSelect(wallet, i)}
+                                  className="text-xs h-9 rounded-lg border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200"
+                                >
+                                  {wallet}
+                                </Button>
+                              ))
+                            ) : (
+                              <div className="flex gap-2">
+                                <Skeleton className="h-9 w-20 rounded-lg" />
+                                <Skeleton className="h-9 w-20 rounded-lg" />
+                                <Skeleton className="h-9 w-20 rounded-lg" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {msg.data?.status === 'lengkap' && msg.data?.transaksi?.[0]?.dompet && (
+                        <div className="flex gap-3 pt-4 border-t border-gray-100">
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleSave(msg.data, i)}
+                            disabled={loading}
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl h-10 transition-all duration-200"
                           >
-                            💳 {wallet}
+                            {loading ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                            )}
+                            {loading ? 'Menyimpan...' : 'Simpan'}
                           </Button>
-                        ))}
-                      </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleCancel(i)}
+                            disabled={loading}
+                            className="flex-1 border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 rounded-xl h-10 transition-all duration-200"
+                          >
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Batal
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                   
-                  {/* Save/Cancel Buttons - Only show when lengkap AND dompet is selected */}
-                  {msg.data?.status === 'lengkap' && msg.data?.transaksi?.[0]?.dompet && (
-                    <div className="flex gap-2 pt-3 border-t">
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleSave(msg.data, i)}
-                        disabled={loading}
-                        className="flex-1 bg-green-600 hover:bg-green-700"
-                      >
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        {loading ? 'Menyimpan...' : 'Simpan'}
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleCancel(i)}
-                        disabled={loading}
-                        className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Batal
-                      </Button>
-                    </div>
-                  )}
-                  
-                  <div className={`text-xs ${msg.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                  <div className={`text-xs mt-3 ${msg.role === 'user' ? 'text-white/70 text-right' : 'text-gray-400'}`}>
                     {msg.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </CardContent>
@@ -416,30 +457,39 @@ export default function ChatPage() {
         </div>
       </ScrollArea>
 
-      <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-3">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ketik transaksi (contoh: Beli kopi 25rb dari GoPay)..."
-            className="flex-1 resize-none min-h-[60px] focus:ring-2 focus:ring-primary/20"
-            rows={2}
-            disabled={loading}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleSubmit(e)
-              }
-            }}
-          />
-          <Button 
-            type="submit" 
-            size="lg"
-            disabled={loading || !input.trim()}
-            className="px-8 h-[60px] shadow-lg hover:shadow-xl transition-shadow"
-          >
-            <Send className="h-5 w-5" />
-          </Button>
+      <div className="border-t border-gray-100 bg-white/80 backdrop-blur p-4 md:p-6">
+        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+          <div className="relative flex gap-3 items-end bg-white rounded-2xl border border-gray-200 shadow-subtle hover:shadow-elevated transition-shadow duration-200 p-2">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ketik transaksi (contoh: Beli kopi 25rb dari GoPay)..."
+              className="flex-1 resize-none min-h-[56px] max-h-[200px] border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-700 placeholder:text-gray-400 py-3 px-3"
+              rows={1}
+              disabled={loading}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSubmit(e)
+                }
+              }}
+            />
+            <Button 
+              type="submit" 
+              size="icon"
+              disabled={loading || !input.trim()}
+              className="w-11 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-gray-400 text-center mt-3">
+            Tekan Enter untuk mengirim, Shift + Enter untuk baris baru
+          </p>
         </form>
       </div>
     </div>

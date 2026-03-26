@@ -8,26 +8,29 @@ import { usePathname } from 'next/navigation'
 import { 
   MessageSquare, 
   History, 
-  ArrowUpRight, 
-  ArrowDownRight,
-  ArrowLeftRight,
-  BarChart3,
   Settings,
   LogOut,
   Menu,
-  X
+  Wallet,
+  CreditCard,
+  TrendingUp,
+  TrendingDown,
+  User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Card, CardContent } from '@/components/ui/card'
+
+interface Wallet {
+  id: number
+  name: string
+  saldo: number
+}
 
 const menuItems = [
-  { href: '/dashboard', label: 'Chat', icon: MessageSquare },
-  { href: '/history', label: 'History', icon: History },
-  { href: '/income', label: 'Pemasukan', icon: ArrowUpRight },
-  { href: '/expense', label: 'Pengeluaran', icon: ArrowDownRight },
-  { href: '/transfer', label: 'Transfer', icon: ArrowLeftRight },
-  { href: '/reports', label: 'Laporan', icon: BarChart3 },
+  { href: '/dashboard', label: 'Dashboard', icon: MessageSquare },
+  { href: '/transactions', label: 'Riwayat', icon: History },
   { href: '/settings', label: 'Pengaturan', icon: Settings },
 ]
 
@@ -41,10 +44,16 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [wallets, setWallets] = useState<Wallet[]>([
+    { id: 1, name: 'Cash', saldo: 0 },
+    { id: 2, name: 'BCA', saldo: 0 },
+  ])
+  const [walletsLoading, setWalletsLoading] = useState(true)
   const supabase = createClient()
 
   useEffect(() => {
     checkUser()
+    loadWallets()
   }, [])
 
   async function checkUser() {
@@ -63,6 +72,24 @@ export default function DashboardLayout({
     }
   }
 
+  async function loadWallets() {
+    try {
+      const { data, error } = await supabase
+        .from('wallets')
+        .select('*')
+        .eq('group_id', 1)
+        .order('name')
+      
+      if (!error && data && data.length > 0) {
+        setWallets(data)
+      }
+    } catch (error) {
+      console.error('Wallet load error:', error)
+    } finally {
+      setWalletsLoading(false)
+    }
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut()
     router.push('/login')
@@ -70,20 +97,27 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold">Loading...</h2>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-soft">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-3 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground font-medium">Memuat...</p>
         </div>
       </div>
     )
   }
 
   const Sidebar = ({ mobile = false }) => (
-    <div className="flex flex-col h-full bg-card border-r">
-      <div className="p-6 border-b">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          💰 CatatUang
-        </h1>
+    <div className="flex flex-col h-full bg-white border-r border-gray-100">
+      <div className="p-6 border-b border-gray-50">
+        <Link href="/dashboard" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:shadow-indigo-300 transition-shadow duration-200">
+            <Wallet className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">CatatUang</h1>
+            <p className="text-xs text-gray-500">AI Assistant</p>
+          </div>
+        </Link>
       </div>
       
       <ScrollArea className="flex-1 px-3 py-4">
@@ -96,61 +130,100 @@ export default function DashboardLayout({
                 key={item.href}
                 href={item.href}
                 onClick={() => mobile && setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
                   isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-accent'
+                    ? 'bg-indigo-50 text-indigo-600 shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <Icon className="h-5 w-5" />
-                <span className="font-medium">{item.label}</span>
+                <Icon className={`h-5 w-5 ${isActive ? 'text-indigo-500' : 'text-gray-400'}`} />
+                <span className="font-medium text-sm">{item.label}</span>
               </Link>
             )
           })}
         </nav>
+
+        <div className="mt-8">
+          <div className="px-3 mb-3">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              Saldo Dompet
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {walletsLoading ? (
+              <div className="px-3 space-y-2">
+                <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+              </div>
+            ) : (
+              wallets.map((wallet) => (
+                <Card key={wallet.id} className="mx-3 border-gray-100 shadow-subtle hover:shadow-elevated transition-shadow duration-200">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+                        <CreditCard className="h-4 w-4 text-indigo-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{wallet.name}</p>
+                        <p className="text-xs text-gray-500">
+                          Rp {wallet.saldo?.toLocaleString('id-ID') || '0'}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </div>
       </ScrollArea>
 
-      <div className="p-4 border-t space-y-2">
-        <div className="text-sm text-muted-foreground px-3">
-          {user?.email}
+      <div className="p-4 border-t border-gray-50 bg-gray-50/50">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <User className="h-4 w-4 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+            </p>
+            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+          </div>
         </div>
         <Button
-          variant="ghost"
+          variant="outline"
           onClick={handleLogout}
-          className="w-full justify-start text-destructive hover:text-destructive"
+          className="w-full justify-center text-gray-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-all duration-200 rounded-lg"
         >
-          <LogOut className="h-5 w-5 mr-2" />
-          Logout
+          <LogOut className="h-4 w-4 mr-2" />
+          Keluar
         </Button>
       </div>
     </div>
   )
 
   return (
-    <div className="flex min-h-screen">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:block w-64">
+    <div className="flex min-h-screen bg-gradient-soft">
+      <aside className="hidden md:block w-[260px] sticky top-0 h-screen">
         <Sidebar />
       </aside>
 
-      {/* Mobile Menu */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden fixed top-4 left-4 z-50"
+            className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-white/80 backdrop-blur shadow-subtle hover:shadow-elevated transition-all duration-200"
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="h-5 w-5 text-gray-600" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-64">
+        <SheetContent side="left" className="p-0 w-[280px] border-gray-100">
           <Sidebar mobile />
         </SheetContent>
       </Sheet>
 
-      {/* Main Content */}
-      <main className="flex-1">
+      <main className="flex-1 min-w-0">
         {children}
       </main>
     </div>
