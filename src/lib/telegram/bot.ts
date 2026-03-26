@@ -1,5 +1,6 @@
 import { Bot } from 'grammy'
 import { createClient } from '@supabase/supabase-js'
+import { ParseResult, ParsedTransaction } from '@/lib/ai/parser'
 
 const token = process.env.TELEGRAM_BOT_TOKEN
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -83,7 +84,7 @@ export function setupBotHandlers() {
   bot.command('tambah_kategori', async (ctx) => {
     if (!supabase) return
     const args = ctx.message.text.split(' ').slice(1).join(' ')
-    if (!args) return ctx.reply('❌ Format: /tambah_kategori Nama')
+    if (!args) return ctx.reply('❌ Format: /tambah_kategori Nama', { parse_mode: 'HTML' })
     const { error } = await supabase.from('categories').insert({ name: args.trim(), group_id: 1 })
     if (error) return ctx.reply(`❌ Error: ${escapeHtml(error.message)}`, { parse_mode: 'HTML' })
     await ctx.reply(`✅ Kategori "<b>${escapeHtml(args.trim())}</b>" ditambahkan!`, { parse_mode: 'HTML' })
@@ -92,7 +93,7 @@ export function setupBotHandlers() {
   bot.command('tambah_dompet', async (ctx) => {
     if (!supabase) return
     const args = ctx.message.text.split(' ').slice(1).join(' ')
-    if (!args) return ctx.reply('❌ Format: /tambah_dompet Nama')
+    if (!args) return ctx.reply('❌ Format: /tambah_dompet Nama', { parse_mode: 'HTML' })
     const { error } = await supabase.from('wallets').insert({ name: args.trim(), group_id: 1 })
     if (error) return ctx.reply(`❌ Error: ${escapeHtml(error.message)}`, { parse_mode: 'HTML' })
     await ctx.reply(`✅ Dompet "<b>${escapeHtml(args.trim())}</b>" ditambahkan!`, { parse_mode: 'HTML' })
@@ -115,25 +116,15 @@ export function setupBotHandlers() {
       const result = await response.json()
       if (result.error) return ctx.reply(`❌ Error: ${escapeHtml(result.error)}`, { parse_mode: 'HTML' })
 
-      const parsed = result.data
+      const parseResult = result.data as ParseResult
       const txId = Math.random().toString(36).substring(2, 8)
       
-      const [{ data: categories }, { data: wallets }] = await Promise.all([
-        supabase?.from('categories').select('name').eq('group_id', 1),
-        supabase?.from('wallets').select('name').eq('group_id', 1),
-      ])
-      
-      const categoryList = categories?.map((c: any) => c.name) || []
-      const walletList = wallets?.map((w: any) => w.name) || []
-      const isEmptyDB = categoryList.length === 0 && walletList.length === 0
-      
-      if (isEmptyDB) {
-        return ctx.reply(
-          `⚠️ <b>Database Kosong!</b>\n\n` +
-          `Tambahkan dompet:\n/tambah_dompet GoPay\n\n` +
-          `Tambahkan kategori:\n/tambah_kategori Makanan`,
-          { parse_mode: 'HTML' }
-        )
+      if (parseResult.status === 'tidak_relevan' || parseResult.status === 'permintaan_laporan') {
+        return ctx.reply(parseResult.pesan_balasan, { parse_mode: 'HTML' })
+      }
+
+      if (parseResult.status === 'ambigu') {
+        return ctx.reply(`⚠️ ${parseResult.pesan_balasan}`, { parse_mode: 'HTML' })
       }
 
       if (supabase) {
@@ -141,38 +132,56 @@ export function setupBotHandlers() {
           user_id: userId,
           group_id: 1,
           original_message: message,
-          parsed_data: parsed,
+          parsed_data: parseResult,
           status: 'pending',
           expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
         })
         console.log('Confirmation saved:', txId)
       }
 
-      const typeLabel = parsed.type === 'income' ? 'Pemasukan' : parsed.type === 'expense' ? 'Pengeluaran' : 'Transfer'
-      const amount = parsed.amount ? `Rp ${parsed.amount.toLocaleString('id-ID')}` : '❓'
-
-      let text = `✅ <b>Konfirmasi</b>\n\n`
-      text += `<b>Jenis:</b> ${typeLabel}\n`
-      text += `<b>Jumlah:</b> ${amount}\n`
-      text += `<b>Ket:</b> ${escapeHtml(parsed.description)}\n`
-      text += `<b>Kategori:</b> ${parsed.category ? escapeHtml(parsed.category) : 'Umum'}\n`
-      text += parsed.wallet ? `<b>Dompet:</b> ${escapeHtml(parsed.wallet)} ✅\n` : `<b>Dompet:</b> ⚠️ Pilih dulu\n`
-
       const keyboard: any[][] = []
+      let text = ''
 
-      if (!parsed.wallet && (parsed.type === 'expense' || parsed.type === 'income')) {
-        text += `\n⚠️ <b>Pilih dompet:</b>\n`
-        if (walletList.length) {
+      if (parseResult.status === 'kurang_data' && parseResult.pesan_balasan) {
+        const [{ data: wallets }] = await Promise.all([
+          supabase?.from('wallets').select('name').eq('group_id', 1),
+        ])
+        
+        const walletList = wallets?.map((w: any) => w.name) || []
+        
+        if (walletList.length > 0) {
+          text = `⚠️ <b>${parseResult.pesan_balasan}</b>\n\n`
+          text += `Pilih dompet:\n`
+          
           for (let i = 0; i < walletList.length; i += 2) {
             const row = [{ text: `💳 ${walletList[i]}`, callback_data: `wallet_${txId}_${walletList[i]}` }]
             if (walletList[i + 1]) row.push({ text: `💳 ${walletList[i + 1]}`, callback_data: `wallet_${txId}_${walletList[i + 1]}` })
             keyboard.push(row)
           }
         } else {
-          text += `\n💳 Belum ada dompet. /tambah_dompet`
+          text = `⚠️ ${parseResult.pesan_balasan}\n\n`
+          text += `💳 Belum ada dompet. Gunakan /tambah_dompet`
         }
-      } else {
-        if (parsed.wallet) text += `\n✅ <b>Siap disimpan!</b>\n`
+        
+        await ctx.reply(text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })
+        return
+      }
+
+      for (const tx of parseResult.transaksi) {
+        const amount = tx.nominal ? `Rp ${tx.nominal.toLocaleString('id-ID')}` : '❓'
+        const typeLabel = tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'
+        
+        text += `✅ <b>Konfirmasi Transaksi</b>\n\n`
+        text += `<b>Jenis:</b> ${typeLabel}\n`
+        text += `<b>Jumlah:</b> ${amount}\n`
+        text += `<b>Ket:</b> ${escapeHtml(tx.keterangan)}\n`
+        text += `<b>Kategori:</b> ${escapeHtml(tx.kategori || 'Umum')}\n`
+        text += tx.dompet ? `<b>Dompet:</b> ${escapeHtml(tx.dompet)} ✅\n` : `<b>Dompet:</b> ⚠️ Pilih dulu\n`
+        text += `\n`
+      }
+
+      if (parseResult.status === 'lengkap') {
+        text += `✅ <b>Siap disimpan!</b>\n`
         keyboard.push([
           { text: '✅ Simpan', callback_data: `save_${txId}` },
           { text: '❌ Batal', callback_data: `cancel_${txId}` },
@@ -213,18 +222,23 @@ export function setupBotHandlers() {
     }
 
     if (action === 'wallet') {
-      const parsed = confirmation.parsed_data as any
-      parsed.wallet = selectedWallet
+      const parseResult = confirmation.parsed_data as ParseResult
       
-      await supabase.from('ai_confirmations').update({ parsed_data: parsed }).eq('id', confirmation.id)
+      for (const tx of parseResult.transaksi) {
+        tx.dompet = selectedWallet
+      }
+      
+      await supabase.from('ai_confirmations').update({ parsed_data: parseResult }).eq('id', confirmation.id)
       await ctx.answerCallbackQuery()
       
-      const amount = parsed.amount ? `Rp ${parsed.amount.toLocaleString('id-ID')}` : '❓'
+      const tx = parseResult.transaksi[0]
+      const amount = tx.nominal ? `Rp ${tx.nominal.toLocaleString('id-ID')}` : '❓'
+      
       await ctx.editMessageText(
         `✅ <b>Dompet: ${escapeHtml(selectedWallet)}</b>\n\n` +
-        `<b>Jenis:</b> ${parsed.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}\n` +
+        `<b>Jenis:</b> ${tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}\n` +
         `<b>Jumlah:</b> ${amount}\n` +
-        `<b>Ket:</b> ${escapeHtml(parsed.description)}\n\n` +
+        `<b>Ket:</b> ${escapeHtml(tx.keterangan)}\n\n` +
         `Klik <b>Simpan</b> untuk menyimpan.`,
         { parse_mode: 'HTML', reply_markup: { inline_keyboard: [[
           { text: '✅ Simpan', callback_data: `save_${txId}` },
@@ -236,55 +250,56 @@ export function setupBotHandlers() {
 
     if (action === 'save') {
       try {
-        const parsed = confirmation.parsed_data as any
-        if (!parsed.wallet) return ctx.answerCallbackQuery({ show_alert: true, text: 'Pilih dompet!' })
-
-        // Lookup wallet_id and category_id
-        let walletId = null
-        let categoryId = null
+        const parseResult = confirmation.parsed_data as ParseResult
         
-        if (parsed.wallet) {
-          const { data: walletData } = await supabase
-            .from('wallets')
-            .select('id')
-            .eq('name', parsed.wallet)
-            .eq('group_id', 1)
-            .single()
-          walletId = walletData?.id || null
-        }
-        
-        if (parsed.category) {
-          const { data: catData } = await supabase
-            .from('categories')
-            .select('id')
-            .eq('name', parsed.category)
-            .eq('group_id', 1)
-            .single()
-          categoryId = catData?.id || null
+        if (!parseResult.transaksi[0]?.dompet) {
+          return ctx.answerCallbackQuery({ show_alert: true, text: 'Pilih dompet!' })
         }
 
-        const { data: transaction, error: txError } = await supabase
-          .from('transactions')
-          .insert({
-            type: parsed.type,
-            amount: parsed.amount,
-            description: parsed.description || confirmation.original_message,
-            group_id: 1,
-            telegram_user_id: userId,
-            wallet_id: walletId,
-            category_id: categoryId,
-            wallet_name: parsed.wallet,
-            category_name: parsed.category || 'Umum',
-            transaction_date: new Date().toISOString(),
-          })
-          .select()
-          .single()
-        
-        if (txError) throw txError
+        for (const tx of parseResult.transaksi) {
+          let walletId = null
+          let categoryId = null
+          
+          if (tx.dompet) {
+            const { data: walletData } = await supabase
+              .from('wallets')
+              .select('id')
+              .eq('name', tx.dompet)
+              .eq('group_id', 1)
+              .single()
+            walletId = walletData?.id || null
+          }
+          
+          if (tx.kategori) {
+            const { data: catData } = await supabase
+              .from('categories')
+              .select('id')
+              .eq('name', tx.kategori)
+              .eq('group_id', 1)
+              .single()
+            categoryId = catData?.id || null
+          }
+
+          const { error: txError } = await supabase
+            .from('transactions')
+            .insert({
+              type: tx.jenis === 'pemasukan' ? 'income' : 'expense',
+              amount: tx.nominal,
+              description: tx.keterangan,
+              group_id: 1,
+              telegram_user_id: userId,
+              wallet_id: walletId,
+              category_id: categoryId,
+              wallet_name: tx.dompet,
+              category_name: tx.kategori || 'Umum',
+              transaction_date: new Date().toISOString(),
+            })
+          
+          if (txError) throw txError
+        }
         
         await supabase.from('ai_confirmations').update({ status: 'confirmed' }).eq('id', confirmation.id)
         
-        console.log('Transaction created:', transaction)
         await ctx.answerCallbackQuery()
         await ctx.editMessageText('✅ Tersimpan di database!')
       } catch (error: any) {

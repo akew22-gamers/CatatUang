@@ -1,162 +1,105 @@
 import Groq from 'groq-sdk'
+import { buildPromptWithContext } from './prompts'
+import { preprocessMessage, extractEmojis, extractContextFromEmojis } from './preprocessor'
 
 const groqApiKey = process.env.GROQ_API_KEY
-console.log('Groq API Key present:', !!groqApiKey)
-
 const groq = groqApiKey ? new Groq({ apiKey: groqApiKey }) : null
 
 const GROQ_MODEL = 'llama-3.1-8b-instant'
-const OPENROUTER_MODEL = 'meta-llama/llama-3-8b-instruct'
 
-console.log('Using Groq model:', GROQ_MODEL)
-
-interface ParseOptions {
-  categories?: string[]
-  wallets?: string[]
+export interface ParsedTransaction {
+  jenis: 'pemasukan' | 'pengeluaran'
+  nominal: number | null
+  kategori: string | 'Umum' | null
+  dompet: string | null
+  keterangan: string
 }
 
-interface ParsedTransaction {
-  type: 'income' | 'expense' | 'transfer'
-  amount: number | null
-  description: string
-  wallet: string | null
-  category: string | null
-  from_wallet: string | null
-  to_wallet: string | null
-  date: string | null
-  confidence: number
-  missing_fields: string[]
-  clarification_needed: boolean
-  suggested_categories?: string[]
-  suggested_wallets?: string[]
+export interface ParseResult {
+  status: 'lengkap' | 'kurang_data' | 'ambigu' | 'tidak_relevan' | 'permintaan_laporan'
+  transaksi: ParsedTransaction[]
+  pesan_balasan: string
 }
 
-interface ParseResult {
-  success: boolean
-  data?: ParsedTransaction
-  error?: string
+export interface ParserContext {
+  categories: string[]
+  wallets: string[]
+  group_id?: number
 }
 
-function buildSystemPrompt(categories: string[], wallets: string[]) {
-  const categoryList = categories.length > 0 ? categories.join(', ') : 'Umum'
-  const walletList = wallets.length > 0 ? wallets.join(', ') : 'Cash, BCA, GoPay, OVO'
-
-  return `Anda adalah CatatUang AI, asisten parser transaksi keuangan untuk pengguna Indonesia.
-
-TUGAS: Ekstrak informasi transaksi dari input bahasa natural (termasuk slang Indonesia).
-
-KATEGORI YANG TERSEDIA DI DATABASE:
-${categoryList}
-
-DOMPET YANG TERSEDIA DI DATABASE:
-${walletList}
-
-PENTING - PRIORITAS PENGGUNAAN:
-1. PRIORITASKAN kategori yang ADA di database. Jika user menyebut kategori yang tidak ada, gunakan kategori yang paling mirip dari database.
-2. PRIORITASKAN dompet yang ADA di database. Jika user menyebut dompet yang tidak ada, gunakan dompet yang paling mirip dari database.
-3. Jika kategori TIDAK ADA di database sama sekali, set category ke "Umum" dan tambahkan suggested_categories dengan kategori yang user maksud.
-4. Jika dompet TIDAK ADA di database, set wallet ke null dan tambahkan suggested_wallets. User akan diminta memilih.
-
-JENIS TRANSAKSI:
-- "income" (pemasukan, gaji, bonus, terima)
-- "expense" (pengeluaran, belanja, bayar, beli)
-- "transfer" (transfer antar dompet)
-
-SCHEMA JSON OUTPUT:
-{
-  "type": "income" | "expense" | "transfer",
-  "amount": number | null,
-  "description": string,
-  "wallet": string | null,
-  "category": string | null,
-  "from_wallet": string | null,
-  "to_wallet": string | null,
-  "date": string | null,
-  "confidence": number,
-  "missing_fields": string[],
-  "clarification_needed": boolean,
-  "suggested_categories": string[] | null,
-  "suggested_wallets": string[] | null
-}
-
-ATURAN KHUSUS:
-1. Jika user TIDAK SEBUT dompet untuk expense → set wallet: null, clarification_needed: true, suggested_wallets: [list dompet yang ada]
-2. Jika user SEBUT kategori yang TIDAK ADA → set category: "Umum", suggested_categories: [kategori yang user maksud]
-3. Jika amount tidak jelas → amount: null, clarification_needed: true
-4. Gunakan konteks Indonesia: "gopay" → "GoPay", "bca" → "BCA", dll
-
-CONTOH:
-
-Input: "Beli makan siang 50rb pakai gopay"
-Database categories: ["Umum", "Makanan", "Transport"]
-Database wallets: ["Cash", "BCA", "GoPay"]
-Output: {
-  "type": "expense",
-  "amount": 50000,
-  "description": "Beli makan siang",
-  "wallet": "GoPay",
-  "category": "Makanan",
-  "confidence": 0.95,
-  "missing_fields": [],
-  "clarification_needed": false,
-  "suggested_categories": null,
-  "suggested_wallets": null
-}
-
-Input: "Beli kopi 25rb" (tidak sebut dompet)
-Database wallets: ["Cash", "BCA", "GoPay"]
-Output: {
-  "type": "expense",
-  "amount": 25000,
-  "description": "Beli kopi",
-  "wallet": null,
-  "category": "Makanan",
-  "confidence": 0.9,
-  "missing_fields": ["wallet"],
-  "clarification_needed": true,
-  "suggested_categories": null,
-  "suggested_wallets": ["Cash", "BCA", "GoPay"]
-}
-
-Input: "Beli buku 100rb kategori Pendidikan" (kategori tidak ada di DB)
-Database categories: ["Umum", "Makanan", "Transport"]
-Output: {
-  "type": "expense",
-  "amount": 100000,
-  "description": "Beli buku",
-  "wallet": null,
-  "category": "Umum",
-  "confidence": 0.8,
-  "missing_fields": ["wallet"],
-  "clarification_needed": true,
-  "suggested_categories": ["Pendidikan"],
-  "suggested_wallets": ["Cash", "BCA", "GoPay"]
-}
-
-BAHASA: Indonesian (formal + slang)
-OUTPUT: Hanya JSON valid, tanpa penjelasan.`
-}
-
-export async function parseTransaction(
-  message: string,
-  options?: ParseOptions
-): Promise<ParseResult> {
-  console.log('Parsing message:', message)
-  console.log('Context - Categories:', options?.categories || [], 'Wallets:', options?.wallets || [])
+function validateParseResult(result: any): ParseResult {
+  const validStatuses = ['lengkap', 'kurang_data', 'ambigu', 'tidak_relevan', 'permintaan_laporan']
   
-  if (!groq) {
-    console.error('Groq client not initialized')
-    return mockParseTransaction(message, options)
+  if (!result || typeof result !== 'object') {
+    throw new Error('Invalid response format: not an object')
   }
   
-  try {
-    const systemPrompt = buildSystemPrompt(options?.categories || [], options?.wallets || [])
+  if (!validStatuses.includes(result.status)) {
+    throw new Error(`Invalid status: ${result.status}`)
+  }
+  
+  if (!Array.isArray(result.transaksi)) {
+    throw new Error('transaksi must be an array')
+  }
+  
+  if (typeof result.pesan_balasan !== 'string') {
+    throw new Error('pesan_balasan must be a string')
+  }
+  
+  for (const tx of result.transaksi) {
+    if (!tx || typeof tx !== 'object') {
+      throw new Error('Invalid transaction object')
+    }
     
+    if (!['pemasukan', 'pengeluaran'].includes(tx.jenis)) {
+      throw new Error(`Invalid jenis: ${tx.jenis}`)
+    }
+    
+    if (tx.nominal !== null && typeof tx.nominal !== 'number') {
+      throw new Error(`Invalid nominal: ${tx.nominal}`)
+    }
+    
+    if (typeof tx.keterangan !== 'string') {
+      throw new Error('keterangan must be a string')
+    }
+  }
+  
+  return result as ParseResult
+}
+
+export async function parseFinancialChat(
+  message: string,
+  context: ParserContext
+): Promise<ParseResult> {
+  if (!groq) {
+    console.error('Groq client not initialized')
+    return mockParseFinancialChat(message, context)
+  }
+
+  console.log('Parsing message:', message)
+  console.log('Context:', context)
+
+  try {
+    const emojis = extractEmojis(message)
+    const emojiContext = extractContextFromEmojis(emojis)
+    
+    const preprocessedMessage = preprocessMessage(message)
+    
+    const systemPrompt = buildPromptWithContext(context.categories, context.wallets)
+    
+    const userMessage = emojiContext.length > 0
+      ? `${preprocessedMessage}\n\nContext dari emoji: ${emojiContext.join(', ')}`
+      : preprocessedMessage
+
+    console.log('Preprocessed message:', preprocessedMessage)
+    console.log('Emoji context:', emojiContext)
+    console.log('Final user message:', userMessage)
+
     const completion = await groq.chat.completions.create({
       model: GROQ_MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: message },
+        { role: 'user', content: userMessage },
       ],
       response_format: { type: 'json_object' },
       temperature: 0.1,
@@ -165,64 +108,102 @@ export async function parseTransaction(
 
     const content = completion.choices[0]?.message?.content
     if (!content) {
-      return { success: false, error: 'Empty response from Groq API' }
+      throw new Error('Empty response from Groq API')
     }
 
-    const parsed = JSON.parse(content) as ParsedTransaction
+    console.log('Groq raw response:', content)
 
-    if (!parsed.type || !['income', 'expense', 'transfer'].includes(parsed.type)) {
-      return { success: false, error: 'Invalid transaction type' }
-    }
+    const parsed = JSON.parse(content)
+    
+    const validated = validateParseResult(parsed)
+    
+    validated.transaksi = validated.transaksi.map(tx => ({
+      ...tx,
+      kategori: tx.kategori || 'Umum',
+    }))
 
-    console.log('Parsed result:', parsed)
-    return { success: true, data: parsed }
+    console.log('Validated result:', validated)
+    return validated
   } catch (error: any) {
     console.error('Groq API error:', error)
-    return { success: false, error: error.message }
+    
+    if (error.name === 'JSONParseError') {
+      console.error('Failed to parse JSON response')
+    }
+    
+    return mockParseFinancialChat(message, context)
   }
 }
 
-function mockParseTransaction(
+function mockParseFinancialChat(
   message: string,
-  options?: ParseOptions
+  context: ParserContext
 ): ParseResult {
   const lowerMessage = message.toLowerCase()
   
-  let type: 'income' | 'expense' | 'transfer' = 'expense'
-  if (lowerMessage.includes('gaji') || lowerMessage.includes('terima')) {
-    type = 'income'
-  } else if (lowerMessage.includes('transfer') || lowerMessage.includes('kirim')) {
-    type = 'transfer'
+  const isIncome = lowerMessage.includes('gaji') || lowerMessage.includes('terima') || lowerMessage.includes('masuk')
+  const isReport = lowerMessage.includes('rekap') || lowerMessage.includes('laporan') || lowerMessage.includes('berapa')
+  const isGreeting = lowerMessage.includes('halo') || lowerMessage.includes('hai') || lowerMessage.includes('test')
+  
+  if (isGreeting) {
+    return {
+      status: 'tidak_relevan',
+      transaksi: [],
+      pesan_balasan: 'Halo! Saya CatatUang Bot. Contoh: Beli kopi 25rb dari GoPay',
+    }
   }
-
+  
+  if (isReport) {
+    return {
+      status: 'permintaan_laporan',
+      transaksi: [],
+      pesan_balasan: 'Baik, saya akan rekap transaksi. (fitur akan segera hadir)',
+    }
+  }
+  
   const amountMatch = message.match(/(\d+(?:[.,]\d+)?)\s*(rb|k|jt|juta|ribu)?/i)
-  let amount: number | null = null
+  let nominal: number | null = null
+  
   if (amountMatch) {
     const value = parseFloat(amountMatch[1].replace(',', '.'))
     const unit = amountMatch[2]?.toLowerCase()
-    if (unit === 'rb' || unit === 'k') amount = value * 1000
-    else if (unit === 'jt' || unit === 'juta') amount = value * 1000000
-    else amount = value
+    
+    if (unit === 'rb' || unit === 'k' || unit === 'ribu') {
+      nominal = value * 1000
+    } else if (unit === 'jt' || unit === 'juta') {
+      nominal = value * 1000000
+    } else {
+      nominal = value
+    }
   }
-
-  const walletList = options?.wallets || ['Cash', 'BCA', 'GoPay']
+  
+  const walletList = context.wallets || ['Cash', 'BCA', 'GoPay']
+  const detectedWallet = walletList.find(w => lowerMessage.includes(w.toLowerCase())) || null
+  
+  let kategori: string | null = 'Umum'
+  if (lowerMessage.includes('makan') || lowerMessage.includes('kopi')) {
+    kategori = 'Makanan'
+  } else if (lowerMessage.includes('bensin') || lowerMessage.includes('transport')) {
+    kategori = 'Transport'
+  } else if (lowerMessage.includes('gaji')) {
+    kategori = 'Gaji'
+  }
+  
+  const needsWallet = !detectedWallet && (isIncome || !isReport)
   
   return {
-    success: true,
-    data: {
-      type,
-      amount,
-      description: message,
-      wallet: null,
-      category: options?.categories?.[0] || 'Umum',
-      from_wallet: null,
-      to_wallet: null,
-      date: null,
-      confidence: 0.5,
-      missing_fields: amount ? [] : ['amount'],
-      clarification_needed: !amount || !options?.wallets?.length,
-      suggested_categories: null,
-      suggested_wallets: walletList,
-    },
+    status: needsWallet || nominal === null ? 'kurang_data' : 'lengkap',
+    transaksi: [{
+      jenis: isIncome ? 'pemasukan' : 'pengeluaran',
+      nominal,
+      kategori,
+      dompet: detectedWallet,
+      keterangan: message,
+    }],
+    pesan_balasan: needsWallet 
+      ? `Dari dompet mana ${isIncome ? 'pemasukan' : 'pengeluaran'} ini?`
+      : nominal === null
+        ? 'Berapa nominalnya?'
+        : '',
   }
 }
