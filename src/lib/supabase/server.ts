@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database.types'
 
 export function createClient() {
@@ -10,7 +10,7 @@ export function createClient() {
     throw new Error('Missing Supabase credentials')
   }
 
-  return createClient<Database>(supabaseUrl, serviceRoleKey, {
+  return createSupabaseClient<Database>(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
