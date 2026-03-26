@@ -65,7 +65,7 @@ export function setupBotHandlers() {
       `<b>Commands:</b>\n` +
       `/saldo - Cek saldo semua dompet\n` +
       `/saldo GoPay - Cek saldo GoPay\n` +
-      `/edit_saldo GoPay 100000 - Edit saldo`,
+      `/edit_saldo - Edit saldo (multi-step)`,
       { parse_mode: 'HTML' }
     )
   })
@@ -117,85 +117,55 @@ export function setupBotHandlers() {
   })
 
   bot.command('edit_saldo', async (ctx) => {
-    if (!supabase) return
+    if (!supabase) return ctx.reply('❌ Database tidak terkoneksi', { parse_mode: 'HTML' })
     
-    const parts = ctx.message.text.split(' ').slice(1)
-    const walletName = parts[0]
-    const amountStr = parts[1]?.replace(/[.,]/g, '')
-    const amount = parseInt(amountStr)
+    const { data: wallets } = await supabase
+      .from('wallets')
+      .select('id, name, saldo')
+      .eq('group_id', 1)
+      .order('name')
     
-    if (!walletName || isNaN(amount)) {
+    if (!wallets?.length) {
       return ctx.reply(
-        `❌ <b>Format:</b> /edit_saldo NamaDompet Jumlah\n` +
-        `Contoh: /edit_saldo GoPay 100000`,
+        `📭 <b>Belum ada dompet</b>\n\n` +
+        `Tambahkan dompet dulu dengan:\n` +
+        `/tambah_dompet NamaDompet`,
         { parse_mode: 'HTML' }
       )
     }
     
-    const { data: wallet } = await supabase
-      .from('wallets')
-      .select('id, saldo, name')
-      .eq('name', walletName)
-      .eq('group_id', 1)
-      .single()
+    const userId = ctx.from?.id.toString()
+    const txId = `edit_saldo_${userId}_${Date.now()}`
     
-    if (!wallet) {
-      return ctx.reply(`❌ Dompet "<b>${escapeHtml(walletName)}</b>" tidak ditemukan`, { parse_mode: 'HTML' })
-    }
-    
-    const previousBalance = wallet.saldo || 0
-    const newBalance = previousBalance + amount
-    
-    if (newBalance < 0) {
-      return ctx.reply(`❌ Saldo tidak boleh negatif! Saldo saat ini: Rp ${previousBalance.toLocaleString('id-ID')}`, { parse_mode: 'HTML' })
-    }
-    
-    console.log('Adjusting balance:', {
-      wallet_id: wallet.id,
-      previous: previousBalance,
-      amount: amount,
-      new: newBalance,
-      user: ctx.from?.id.toString()
+    // Save state to ai_confirmations
+    await supabase.from('ai_confirmations').insert({
+      user_id: userId,
+      group_id: 1,
+      original_message: '/edit_saldo',
+      parsed_data: {
+        type: 'edit_saldo',
+        step: 'select_wallet',
+      },
+      status: 'pending',
+      expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     })
     
-    // Direct update first
-    const { error: updateError } = await supabase
-      .from('wallets')
-      .update({ saldo: newBalance })
-      .eq('id', wallet.id)
+    const list = wallets.map(w => 
+      `• ${escapeHtml(w.name)}: Rp ${(w.saldo || 0).toLocaleString('id-ID')}`
+    ).join('\n')
     
-    if (updateError) {
-      console.error('Update error:', updateError)
-      return ctx.reply(`❌ Error update saldo: ${escapeHtml(updateError.message)}`, { parse_mode: 'HTML' })
+    const keyboard: any[][] = []
+    for (let i = 0; i < wallets.length; i += 2) {
+      const row = [{ text: `💳 ${wallets[i].name}`, callback_data: `editwallet_${txId}_${wallets[i].id}_${wallets[i].name}` }]
+      if (wallets[i + 1]) row.push({ text: `💳 ${wallets[i + 1].name}`, callback_data: `editwallet_${txId}_${wallets[i + 1].id}_${wallets[i + 1].name}` })
+      keyboard.push(row)
     }
-    
-    // Then log to history
-    const { error: historyError } = await supabase
-      .from('wallet_balance_history')
-      .insert({
-        wallet_id: wallet.id,
-        previous_balance: previousBalance,
-        new_balance: newBalance,
-        change_amount: amount,
-        change_type: 'adjustment',
-        created_by: ctx.from?.id.toString() || null,
-        description: `Manual adjustment via Telegram by ${ctx.from?.first_name || 'user'}`,
-      })
-    
-    if (historyError) {
-      console.error('History error:', historyError)
-      // Don't fail the command, just log warning
-    }
-    
-    console.log('Balance adjusted successfully:', newBalance)
     
     await ctx.reply(
-      `✅ <b>Saldo Diupdate</b>\n\n` +
-      `Dompet: ${escapeHtml(wallet.name)}\n` +
-      `Perubahan: ${amount >= 0 ? '+' : ''}Rp ${amount.toLocaleString('id-ID')}\n` +
-      `Saldo Sebelumnya: Rp ${previousBalance.toLocaleString('id-ID')}\n` +
-      `Saldo Baru: <b>Rp ${newBalance.toLocaleString('id-ID')}</b>`,
-      { parse_mode: 'HTML' }
+      `💳 <b>Pilih Dompet untuk Edit Saldo</b>\n\n` +
+      `Saldo Saat Ini:\n${list}\n\n` +
+      `<i>Klik dompet untuk melanjutkan:</i>`,
+      { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } }
     )
   })
 
@@ -238,6 +208,91 @@ export function setupBotHandlers() {
     const userId = ctx.from?.id.toString()
     console.log('Message from:', userId, 'Text:', message)
 
+    // Check if user is in edit_saldo flow (step 2: input nominal)
+    if (!message.startsWith('/')) {
+      const { data: editState } = await supabase
+        .from('ai_confirmations')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'pending')
+        .eq('parsed_data->>type', 'edit_saldo')
+        .eq('parsed_data->>step', 'input_nominal')
+        .gt('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      
+      if (editState) {
+        // User is inputting nominal for edit_saldo
+        const nominalStr = message.replace(/[.,]/g, '').trim()
+        const nominal = parseInt(nominalStr)
+        const parsedData = editState.parsed_data as any
+        
+        if (isNaN(nominal) || nominal === 0) {
+          return ctx.reply(
+            `❌ <b>Nominal tidak valid</b>\n\n` +
+            `Masukkan nominal angka yang valid.\n` +
+            `Contoh: 100000 atau 100.000\n\n` +
+            `/edit_saldo - Mulai ulang`,
+            { parse_mode: 'HTML' }
+          )
+        }
+        
+        const walletId = parsedData.wallet_id
+        const walletName = parsedData.wallet_name
+        const previousBalance = parsedData.previous_balance || 0
+        const newBalance = previousBalance + nominal
+        
+        if (newBalance < 0) {
+          return ctx.reply(
+            `❌ <b>Saldo tidak boleh negatif</b>\n\n` +
+            `Saldo saat ini: Rp ${previousBalance.toLocaleString('id-ID')}\n` +
+            `Perubahan: ${nominal >= 0 ? '+' : ''}Rp ${nominal.toLocaleString('id-ID')}\n` +
+            `Saldo Baru: Rp ${newBalance.toLocaleString('id-ID')} (negatif)\n\n` +
+            `/edit_saldo - Mulai ulang`,
+            { parse_mode: 'HTML' }
+          )
+        }
+        
+        // Update balance
+        const { error: updateError } = await supabase
+          .from('wallets')
+          .update({ saldo: newBalance })
+          .eq('id', walletId)
+        
+        if (updateError) {
+          return ctx.reply(`❌ Error: ${escapeHtml(updateError.message)}`, { parse_mode: 'HTML' })
+        }
+        
+        // Log to history
+        await supabase
+          .from('wallet_balance_history')
+          .insert({
+            wallet_id: walletId,
+            previous_balance: previousBalance,
+            new_balance: newBalance,
+            change_amount: nominal,
+            change_type: 'adjustment',
+            created_by: userId,
+            description: `Manual adjustment via Telegram by ${ctx.from?.first_name || 'user'}`,
+          })
+        
+        // Clear state
+        await supabase.from('ai_confirmations').update({ status: 'confirmed' }).eq('id', editState.id)
+        
+        await ctx.reply(
+          `✅ <b>Saldo Berhasil Diupdate!</b>\n\n` +
+          `Dompet: ${escapeHtml(walletName)}\n` +
+          `Perubahan: ${nominal >= 0 ? '+' : ''}Rp ${nominal.toLocaleString('id-ID')}\n` +
+          `Saldo Sebelumnya: Rp ${previousBalance.toLocaleString('id-ID')}\n` +
+          `Saldo Baru: <b>Rp ${newBalance.toLocaleString('id-ID')}</b>`,
+          { parse_mode: 'HTML' }
+        )
+        return
+      }
+    }
+
+    // Handle regular transaction messages
     try {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://catatuang-three.vercel.app'
       
@@ -329,8 +384,74 @@ export function setupBotHandlers() {
     }
   })
 
+  // Handle edit wallet selection
   bot.on('callback_query:data', async (ctx) => {
-    const parts = ctx.callbackQuery.data.split('_')
+    const data = ctx.callbackQuery.data
+    
+    // Handle edit_saldo wallet selection
+    if (data.startsWith('editwallet_')) {
+      const parts = data.split('_')
+      const txId = parts[1]
+      const walletId = parts[2]
+      const walletName = parts[3]
+      const userId = ctx.from?.id.toString()
+      
+      console.log('Edit wallet selected:', walletId, walletName, userId)
+      
+      // Update state to step 2: input nominal
+      const { data: editState } = await supabase
+        .from('ai_confirmations')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('parsed_data->>type', 'edit_saldo')
+        .eq('parsed_data->>step', 'select_wallet')
+        .gt('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      
+      if (!editState) {
+        return ctx.answerCallbackQuery({ show_alert: true, text: 'Session expired. Gunakan /edit_saldo lagi.' })
+      }
+      
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('saldo')
+        .eq('id', walletId)
+        .single()
+      
+      const previousBalance = wallet?.saldo || 0
+      
+      await supabase
+        .from('ai_confirmations')
+        .update({
+          parsed_data: {
+            type: 'edit_saldo',
+            step: 'input_nominal',
+            wallet_id: walletId,
+            wallet_name: walletName,
+            previous_balance: previousBalance,
+          }
+        })
+        .eq('id', editState.id)
+      
+      await ctx.answerCallbackQuery()
+      await ctx.editMessageText(
+        `💳 <b>${escapeHtml(walletName)}</b>\n\n` +
+        `Saldo Saat Ini: <b>Rp ${previousBalance.toLocaleString('id-ID')}</b>\n\n` +
+        `<b>Masukkan Nominal:</b>\n` +
+        `<i>Ketik angka untuk menambah/mengurangi saldo</i>\n\n` +
+        `Contoh:\n` +
+        `100000 → Tambah 100.000\n` +
+        `-50000 → Kurangi 50.000\n\n` +
+        `<i>Ketik /cancel untuk batal</i>`,
+        { parse_mode: 'HTML' }
+      )
+      return
+    }
+
+    // Existing transaction flow
+    const parts = data.split('_')
     const action = parts[0], txId = parts[1], selectedValue = parts[2]
     console.log('Callback:', action, txId, 'value:', selectedValue)
 
