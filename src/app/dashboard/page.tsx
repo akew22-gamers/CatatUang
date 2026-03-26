@@ -360,22 +360,8 @@ export default function ChatPage() {
                 <CardContent className="p-4 space-y-3">
                   {msg.content}
                   
-                  {/* DEBUG: Show message data */}
-                  {msg.data && (
-                    <div className="text-xs bg-muted/50 p-2 rounded mt-2 font-mono">
-                      <div>Status: {msg.data.status}</div>
-                      <div>Has Transaksi: {msg.data.transaksi ? 'Yes' : 'No'}</div>
-                      {msg.data.transaksi?.[0] && (
-                        <>
-                          <div>Transaksi[0].dompet: {String(msg.data.transaksi[0].dompet)}</div>
-                          <div>Wallets loaded: {wallets.length}</div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* Wallet Selection Buttons */}
-                  {msg.data?.status === 'kurang_data' && msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && (
+                  {/* Wallet Selection Buttons - Show whenever dompet is null */}
+                  {msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && (
                     <div className="space-y-2 pt-3 border-t">
                       <p className="text-xs font-semibold text-muted-foreground">Pilih dompet:</p>
                       <div className="flex flex-wrap gap-2">
@@ -394,7 +380,8 @@ export default function ChatPage() {
                     </div>
                   )}
                   
-                  {msg.data?.status === 'lengkap' && (
+                  {/* Save/Cancel Buttons - Only show when lengkap AND dompet is selected */}
+                  {msg.data?.status === 'lengkap' && msg.data?.transaksi?.[0]?.dompet && (
                     <div className="flex gap-2 pt-3 border-t">
                       <Button 
                         size="sm" 
