@@ -59,13 +59,31 @@ export function setupBotHandlers() {
 
   bot.command('help', async (ctx) => {
     await ctx.reply(
-      `📖 <b>Bantuan</b>\n\n` +
-      `<b>Contoh Lengkap:</b> "Beli kopi 25rb dari GoPay"\n` +
-      `<b>Contoh Tidak Lengkap:</b> "Beli kopi 25rb"\n\n` +
-      `<b>Commands:</b>\n` +
-      `/saldo - Cek saldo semua dompet\n` +
-      `/saldo GoPay - Cek saldo GoPay\n` +
-      `/edit_saldo - Edit saldo (multi-step)`,
+      `📖 <b>Bantuan CatatUang Bot</b>\n\n` +
+      `<b>📝 Command Tersedia:</b>\n\n` +
+      `<b>🔹 Manajemen Transaksi:</b>\n` +
+      `/start - Mulai bot\n` +
+      `Ketik natural: "Beli kopi 25rb dari GoPay"\n\n` +
+      `<b>🔹 Cek Saldo:</b>\n` +
+      `/saldo - Cek semua saldo dompet\n` +
+      `/saldo GoPay - Cek saldo GoPay\n\n` +
+      `<b>🔹 Edit Saldo:</b>\n` +
+      `/edit_saldo - Edit saldo (multi-step)\n` +
+      `  1. Pilih dompet dari button\n` +
+      `  2. Masukkan nominal\n` +
+      `  3. Saldo terupdate otomatis\n\n` +
+      `<b>🔹 Manajemen Dompet:</b>\n` +
+      `/dompet - Lihat daftar dompet\n` +
+      `/tambah_dompet Nama - Tambah dompet baru\n` +
+      `  Contoh: /tambah_dompet GoPay\n\n` +
+      `<b>🔹 Manajemen Kategori:</b>\n` +
+      `/kategori - Lihat daftar kategori\n` +
+      `/tambah_kategori Nama - Tambah kategori baru\n` +
+      `  Contoh: /tambah_kategori Makanan\n\n` +
+      `<b>💡 Tips:</b>\n` +
+      `- Selalu sebutkan nominal (25rb, 100k, 1jt)\n` +
+      `- Sebutkan dompet untuk transaksi\n` +
+      `- Bot akan konfirmasi sebelum simpan`,
       { parse_mode: 'HTML' }
     )
   })
