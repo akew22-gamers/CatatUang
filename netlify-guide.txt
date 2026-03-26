@@ -1,0 +1,54 @@
+================================================================================
+PANDUAN DEPLOYMENT CATATUANG KE NETLIFY
+================================================================================
+
+LANGKAH 1: BUKA NETLIFY
+- Kunjungi: https://app.netlify.com
+- Login dengan GitHub
+
+LANGKAH 2: IMPORT PROJECT
+- Klik "Add new site" -> "Import an existing project"
+- Pilih GitHub
+- Cari repository: ake22-gamers/CatatUang
+
+LANGKAH 3: BUILD SETTINGS
+- Build command: npm run build
+- Publish directory: .next
+(Nantinya akan auto-detect dari netlify.toml)
+
+LANGKAH 4: ENVIRONMENT VARIABLES (PENTING!)
+
+Masukkan semua variable ini di Netlify:
+
+[SUPABASE]
+NEXT_PUBLIC_SUPABASE_URL = https://ecjedovrkcsdnslycmfi.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY = [DAPAT DARI SUPABASE DASHBOARD]
+SUPABASE_SERVICE_ROLE_KEY = [DAPAT DARI SUPABASE DASHBOARD]
+
+[GROQ AI]
+GROQ_API_KEY = [DAPAT DARI console.groq.com/keys]
+OPENROUTER_API_KEY = [DAPAT DARI openrouter.ai/keys]
+
+[TELEGRAM]
+TELEGRAM_BOT_TOKEN = [DAPAT DARI @BotFather]
+
+[APP]
+NEXT_PUBLIC_APP_URL = https://[NAMA-SITE].netlify.app
+
+CARA DAPAT API KEYS:
+- Supabase: Dashboard -> Settings -> API
+- Groq: https://console.groq.com/keys
+- OpenRouter: https://openrouter.ai/keys
+- Telegram: Chat @BotFather -> /newbot
+
+LANGKAH 5: DEPLOY
+- Klik "Deploy site"
+- Tunggu 5-10 menit
+
+LANGKAH 6: SET WEBHOOK TELEGRAM
+Setelah deploy selesai, buka URL ini di browser:
+https://api.telegram.org/bot[TOKEN]/setWebhook?url=https://[SITE].netlify.app/api/telegram
+
+Ganti [TOKEN] dan [SITE] dengan yang sesuai!
+
+================================================================================
