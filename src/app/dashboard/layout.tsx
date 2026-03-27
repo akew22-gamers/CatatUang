@@ -243,9 +243,7 @@ export default function DashboardLayout({
             </span>
           </Link>
 
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-            <User className="h-4 w-4 text-white" />
-          </div>
+          <div className="w-10" />
         </div>
       </header>
 

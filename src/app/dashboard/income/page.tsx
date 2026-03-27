@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { TrendingUp, PlusCircle, Wallet } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function IncomePage() {
   const [loading, setLoading] = useState(false)
@@ -24,7 +25,7 @@ export default function IncomePage() {
     
     setTimeout(() => {
       setLoading(false)
-      alert('Fitur ini akan segera hadir!')
+      toast.info('Fitur ini akan segera hadir!')
     }, 1000)
   }
 

@@ -6,12 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Settings, Wallet, Plus, Trash2, CreditCard, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useConfirm } from '@/hooks/use-confirm'
 
 export default function SettingsPage() {
   const [wallets, setWallets] = useState<any[]>([])
   const [newWallet, setNewWallet] = useState('')
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
+  const { confirm, ConfirmDialog } = useConfirm()
   const supabase = createClient()
 
   useEffect(() => {
@@ -53,16 +56,24 @@ export default function SettingsPage() {
       })
 
     if (error) {
-      alert('Error: ' + error.message)
+      toast.error('Gagal menambah dompet: ' + error.message)
     } else {
+      toast.success('Dompet berhasil ditambahkan')
       setNewWallet('')
       loadData()
     }
     setAdding(false)
   }
 
-  async function deleteWallet(id: number) {
-    if (!confirm('Hapus dompet ini?')) return
+  async function deleteWallet(id: number, name: string) {
+    const confirmed = await confirm({
+      title: "Hapus Dompet",
+      description: `Apakah Anda yakin ingin menghapus dompet "${name}"?`,
+      confirmText: "Hapus",
+      cancelText: "Batal"
+    })
+    
+    if (!confirmed) return
 
     const { error } = await supabase
       .from('wallets')
@@ -70,8 +81,9 @@ export default function SettingsPage() {
       .eq('id', id)
 
     if (error) {
-      alert('Error: ' + error.message)
+      toast.error('Gagal menghapus dompet: ' + error.message)
     } else {
+      toast.success('Dompet berhasil dihapus')
       loadData()
     }
   }
@@ -157,7 +169,7 @@ export default function SettingsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => deleteWallet(wallet.id)}
+                    onClick={() => deleteWallet(wallet.id, wallet.name)}
                     className="w-9 h-9 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -168,6 +180,7 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+      <ConfirmDialog />
     </div>
   )
 }

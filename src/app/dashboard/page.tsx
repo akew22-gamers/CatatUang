@@ -1,13 +1,16 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Sparkles, TrendingUp, TrendingDown, Wallet, CheckCircle2, XCircle, AlertCircle, Loader2, Trash2 } from 'lucide-react'
+import { Send, Sparkles, TrendingUp, TrendingDown, Wallet, CheckCircle2, XCircle, AlertCircle, Loader2, Trash2, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
+import { useConfirm } from '@/hooks/use-confirm'
 
 interface Message {
   id?: number
@@ -25,7 +28,9 @@ export default function ChatPage() {
   const [walletsLoaded, setWalletsLoaded] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [pendingAmount, setPendingAmount] = useState<{ message: string; amount: string } | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const { confirm, ConfirmDialog } = useConfirm()
 
   useEffect(() => {
     initialize()
@@ -147,6 +152,48 @@ export default function ChatPage() {
             <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </div>
           <span className="text-sm sm:text-base">Transaksi dibatalkan.</span>
+        </div>
+      )
+    }
+    
+    if (parsed.status === 'need_amount') {
+      return (
+        <div className="space-y-3 sm:space-y-4">
+          <div className="flex items-start gap-2 sm:gap-3 text-indigo-600">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+              <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            </div>
+            <div>
+              <span className="font-semibold text-gray-900 text-sm sm:text-base">Nominal Berapa?</span>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">{parsed.pesan_balasan}</p>
+            </div>
+          </div>
+          <div className="flex gap-2 items-center">
+            <span className="text-gray-500 text-sm">Rp</span>
+            <Input
+              type="number"
+              placeholder="50000"
+              className="h-9 sm:h-10 rounded-lg border-gray-200"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleAmountSubmit(parsed.originalMessage, (e.target as HTMLInputElement).value)
+                }
+              }}
+            />
+            <Button
+              size="sm"
+              onClick={() => {
+                const input = document.querySelector('input[type="number"]') as HTMLInputElement
+                if (input) {
+                  handleAmountSubmit(parsed.originalMessage, input.value)
+                }
+              }}
+              className="h-9 sm:h-10 rounded-lg bg-indigo-600 hover:bg-indigo-700"
+            >
+              Ok
+            </Button>
+          </div>
         </div>
       )
     }
@@ -350,7 +397,16 @@ export default function ChatPage() {
   }
 
   const clearChatHistory = async () => {
-    if (!userId || !confirm('Hapus semua riwayat chat?')) return
+    if (!userId) return
+    
+    const confirmed = await confirm({
+      title: "Hapus Riwayat Chat",
+      description: "Apakah Anda yakin ingin menghapus semua riwayat chat?",
+      confirmText: "Hapus",
+      cancelText: "Batal"
+    })
+    
+    if (!confirmed) return
     
     const supabase = createClient()
     
@@ -363,11 +419,106 @@ export default function ChatPage() {
       
       if (error) {
         console.error('Error clearing chat:', error)
+        toast.error('Gagal menghapus riwayat chat')
       } else {
         setMessages([])
+        toast.success('Riwayat chat berhasil dihapus')
       }
     } catch (error) {
       console.error('Failed to clear chat:', error)
+      toast.error('Gagal menghapus riwayat chat')
+    }
+  }
+
+  const containsAmount = (text: string): boolean => {
+    const amountPatterns = [
+      /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?/,
+      /\d+(?:rb|ribu|juta|jt|k)/i,
+      /\d+\s*(?:rb|ribu|juta|jt|k)/i,
+    ]
+    return amountPatterns.some(pattern => pattern.test(text))
+  }
+
+  const looksLikeTransaction = (text: string): boolean => {
+    const transactionKeywords = [
+      'beli', 'makan', 'minum', 'bayar', 'gaji', 'bonus', 'transfer', 'tarik', ' setor',
+      'isi', 'pulsa', 'listrik', 'air', 'internet', 'tagihan', 'cicilan', 'utang',
+      'pinjam', 'kembali', 'jual', 'belanja', 'ngopi', 'jajan', 'snack', 'ojek',
+      'gojek', 'grab', 'shopee', 'tokopedia', 'pump', 'bensin', 'parkir', 'tol'
+    ]
+    const lowerText = text.toLowerCase()
+    return transactionKeywords.some(keyword => lowerText.includes(keyword))
+  }
+
+  const handleAmountSubmit = async (originalMessage: string, amount: string) => {
+    if (!amount.trim()) {
+      toast.error('Masukkan nominal transaksi')
+      return
+    }
+    
+    setPendingAmount(null)
+    setLoading(true)
+    
+    const combinedMessage = `${originalMessage} ${amount}`
+    
+    const userMsg: Message = {
+      role: 'user',
+      content: combinedMessage,
+      timestamp: new Date()
+    }
+    
+    const userMsgId = await saveMessage('user', combinedMessage)
+    if (userMsgId) userMsg.id = userMsgId
+    setMessages(prev => [...prev, userMsg])
+
+    try {
+      const response = await fetch('/api/parse-transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: combinedMessage }),
+      })
+
+      const result = await response.json()
+
+      if (result.error) {
+        const errorData = { status: 'error', pesan_balasan: result.error }
+        const errorMsg: Message = {
+          role: 'assistant',
+          content: renderAssistantContent(errorData),
+          data: errorData,
+          timestamp: new Date(),
+        }
+        const msgId = await saveMessage('assistant', result.error, errorData)
+        if (msgId) errorMsg.id = msgId
+        setMessages(prev => [...prev, errorMsg])
+        return
+      }
+
+      const parsed = result.data
+      
+      const assistantMsg: Message = {
+        role: 'assistant',
+        content: renderAssistantContent(parsed),
+        data: parsed,
+        timestamp: new Date()
+      }
+      
+      const msgId = await saveMessage('assistant', parsed.pesan_balasan || '', parsed)
+      if (msgId) assistantMsg.id = msgId
+      setMessages(prev => [...prev, assistantMsg])
+    } catch (error: any) {
+      const errorData = { status: 'error', pesan_balasan: error.message }
+      const errorMsg: Message = {
+        role: 'assistant',
+        content: renderAssistantContent(errorData),
+        data: errorData,
+        timestamp: new Date(),
+      }
+      const msgId = await saveMessage('assistant', error.message, errorData)
+      if (msgId) errorMsg.id = msgId
+      setMessages(prev => [...prev, errorMsg])
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -377,6 +528,37 @@ export default function ChatPage() {
 
     const userMessage = input.trim()
     setInput('')
+    
+    if (looksLikeTransaction(userMessage) && !containsAmount(userMessage)) {
+      const userMsg: Message = {
+        role: 'user',
+        content: userMessage,
+        timestamp: new Date()
+      }
+      
+      const userMsgId = await saveMessage('user', userMessage)
+      if (userMsgId) userMsg.id = userMsgId
+      setMessages(prev => [...prev, userMsg])
+      
+      const needAmountData = { 
+        status: 'need_amount', 
+        pesan_balasan: 'Sepertinya ini transaksi, tapi nominalnya berapa?',
+        originalMessage: userMessage 
+      }
+      
+      const assistantMsg: Message = {
+        role: 'assistant',
+        content: renderAssistantContent(needAmountData),
+        data: needAmountData,
+        timestamp: new Date()
+      }
+      
+      const msgId = await saveMessage('assistant', needAmountData.pesan_balasan, needAmountData)
+      if (msgId) assistantMsg.id = msgId
+      setMessages(prev => [...prev, assistantMsg])
+      return
+    }
+    
     setLoading(true)
     
     const userMsg: Message = {
@@ -603,7 +785,7 @@ export default function ChatPage() {
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ketik transaksi (contoh: Beli kopi 25rb dari GoPay)..."
+              placeholder="Tulis pesan/transaksi..."
               className="flex-1 resize-none min-h-[48px] sm:min-h-[56px] max-h-[120px] sm:max-h-[200px] border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-700 placeholder:text-gray-400 py-2.5 sm:py-3 px-2 sm:px-3 text-sm sm:text-base"
               rows={1}
               disabled={loading}
@@ -640,6 +822,7 @@ export default function ChatPage() {
           </div>
         </form>
       </div>
+      <ConfirmDialog />
     </div>
   )
 }

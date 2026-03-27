@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Wallet, Eye, EyeOff, ArrowRight, Check, User } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -93,7 +94,7 @@ export default function SignupPage() {
         }
       }
 
-      alert('Berhasil daftar! Silakan cek email untuk verifikasi.')
+      toast.success('Berhasil daftar! Silakan cek email untuk verifikasi.')
       router.push('/login')
     } catch (err: any) {
       setError(err.message || 'Terjadi kesalahan saat daftar')
