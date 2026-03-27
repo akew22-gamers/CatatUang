@@ -53,10 +53,7 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [wallets, setWallets] = useState<WalletItem[]>([
-    { id: 1, name: 'Cash', saldo: 0 },
-    { id: 2, name: 'BCA', saldo: 0 },
-  ])
+  const [wallets, setWallets] = useState<WalletItem[]>([])
   const [walletsLoading, setWalletsLoading] = useState(true)
   const supabase = createClient()
 
@@ -89,8 +86,10 @@ export default function DashboardLayout({
         .eq('group_id', 1)
         .order('name')
       
-      if (!error && data && data.length > 0) {
-        setWallets(data)
+      if (error) {
+        console.error('Error loading wallets:', error)
+      } else {
+        setWallets(data || [])
       }
     } catch (error) {
       console.error('Wallet load error:', error)

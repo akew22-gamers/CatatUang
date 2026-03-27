@@ -20,7 +20,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [wallets, setWallets] = useState<string[]>(['Cash', 'BCA', 'GoPay'])
+  const [wallets, setWallets] = useState<string[]>([])
   const [walletsLoaded, setWalletsLoaded] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -31,17 +31,24 @@ export default function ChatPage() {
   const loadWallets = async () => {
     const supabase = createClient()
     
-    const { data: walletData, error } = await supabase
-      .from('wallets')
-      .select('name')
-      .eq('group_id', 1)
-      .order('name')
-    
-    if (!error && walletData && walletData.length > 0) {
-      const walletNames = walletData.map(w => w.name)
-      setWallets(walletNames)
+    try {
+      const { data: walletData, error } = await supabase
+        .from('wallets')
+        .select('name')
+        .eq('group_id', 1)
+        .order('name')
+      
+      if (error) {
+        console.error('Error loading wallets:', error)
+      } else if (walletData && walletData.length > 0) {
+        const walletNames = walletData.map(w => w.name)
+        setWallets(walletNames)
+      }
+    } catch (error) {
+      console.error('Failed to load wallets:', error)
+    } finally {
+      setWalletsLoaded(true)
     }
-    setWalletsLoaded(true)
   }
 
   const formatText = (text: string) => {
