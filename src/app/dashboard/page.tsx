@@ -17,6 +17,7 @@ interface Message {
   role: 'user' | 'assistant'
   content: string | React.ReactNode
   data?: any
+  transaction_status?: 'pending' | 'accepted' | 'rejected' | null
   timestamp: Date
 }
 
@@ -90,8 +91,9 @@ export default function ChatPage() {
         const loadedMessages: Message[] = data.map((msg: any) => ({
           id: msg.id,
           role: msg.role,
-          content: msg.role === 'user' ? msg.content : renderAssistantContent(msg.data || { pesan_balasan: msg.content }),
+          content: msg.role === 'user' ? msg.content : renderAssistantContent(msg.data || { pesan_balasan: msg.content }, msg.transaction_status),
           data: msg.data,
+          transaction_status: msg.transaction_status,
           timestamp: new Date(msg.created_at)
         }))
         setMessages(loadedMessages)
@@ -108,16 +110,22 @@ export default function ChatPage() {
     
     const supabase = createClient()
     
+    const insertData: any = {
+      user_id: userId,
+      group_id: 1,
+      role,
+      content,
+      data: data || null
+    }
+    
+    if (role === 'assistant' && data?.transaksi) {
+      insertData.transaction_status = 'pending'
+    }
+    
     try {
       const { data: savedData, error } = await (supabase as any)
         .from('chat_messages')
-        .insert({
-          user_id: userId,
-          group_id: 1,
-          role,
-          content,
-          data: data || null
-        })
+        .insert(insertData)
         .select('id')
         .single()
       
@@ -152,7 +160,29 @@ export default function ChatPage() {
     }
   }
 
-  const renderAssistantContent = (parsed: any, messageIndex?: number) => {
+  const renderAssistantContent = (parsed: any, transactionStatus?: 'pending' | 'accepted' | 'rejected' | null) => {
+    if (transactionStatus === 'accepted') {
+      return (
+        <div className="flex items-center gap-2 sm:gap-3 text-green-600">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+            <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          </div>
+          <span className="font-semibold text-sm sm:text-base">Transaksi berhasil disimpan!</span>
+        </div>
+      )
+    }
+    
+    if (transactionStatus === 'rejected') {
+      return (
+        <div className="flex items-center gap-2 sm:gap-3 text-gray-500">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          </div>
+          <span className="text-sm sm:text-base">Transaksi dibatalkan.</span>
+        </div>
+      )
+    }
+    
     if (parsed.status === 'saved') {
       return (
         <div className="flex items-center gap-2 sm:gap-3 text-green-600">
@@ -342,18 +372,16 @@ export default function ChatPage() {
     ))
   }
 
-  const updateMessageStatus = async (messageIndex: number, newStatus: 'saved' | 'cancelled') => {
+  const updateMessageStatus = async (messageIndex: number, newStatus: 'accepted' | 'rejected') => {
     const msg = messages[messageIndex]
     if (!msg) return
-    
-    const updatedData = { ...msg.data, status: newStatus }
     
     setMessages(prev => {
       const newMessages = [...prev]
       const currentMsg = newMessages[messageIndex]
       if (currentMsg) {
-        currentMsg.content = renderAssistantContent(updatedData)
-        currentMsg.data = updatedData
+        currentMsg.content = renderAssistantContent(currentMsg.data, newStatus)
+        currentMsg.transaction_status = newStatus
       }
       return newMessages
     })
@@ -362,7 +390,7 @@ export default function ChatPage() {
       const supabase = createClient()
       const { error } = await (supabase as any)
         .from('chat_messages')
-        .update({ data: updatedData })
+        .update({ transaction_status: newStatus })
         .eq('id', msg.id)
       
       if (error) {
@@ -389,12 +417,12 @@ export default function ChatPage() {
       const result = await response.json()
       if (result.error) throw new Error(result.error)
 
-      await updateMessageStatus(messageIndex, 'saved')
+      await updateMessageStatus(messageIndex, 'accepted')
       toast.success('Transaksi berhasil disimpan!')
     } catch (error: any) {
       console.error('Save error:', error)
       
-      await updateMessageStatus(messageIndex, 'cancelled')
+      await updateMessageStatus(messageIndex, 'rejected')
       
       const errorData = { status: 'error', pesan_balasan: error.message }
       const errorMsg: Message = {
@@ -414,7 +442,7 @@ export default function ChatPage() {
   }
 
   const handleCancel = async (messageIndex: number) => {
-    await updateMessageStatus(messageIndex, 'cancelled')
+    await updateMessageStatus(messageIndex, 'rejected')
     toast.info('Transaksi dibatalkan')
   }
 
@@ -554,8 +582,9 @@ export default function ChatPage() {
       
       const assistantMsg: Message = {
         role: 'assistant',
-        content: renderAssistantContent(parsed),
+        content: renderAssistantContent(parsed, parsed.transaksi ? 'pending' : null),
         data: parsed,
+        transaction_status: parsed.transaksi ? 'pending' : null,
         timestamp: new Date()
       }
       
@@ -654,8 +683,9 @@ export default function ChatPage() {
       
       const assistantMsg: Message = {
         role: 'assistant',
-        content: renderAssistantContent(parsed),
+        content: renderAssistantContent(parsed, parsed.transaksi ? 'pending' : null),
         data: parsed,
+        transaction_status: parsed.transaksi ? 'pending' : null,
         timestamp: new Date()
       }
       
@@ -694,6 +724,12 @@ export default function ChatPage() {
       return msg.content as string
     }
     
+    if (msg.transaction_status === 'accepted') {
+      return 'Transaksi berhasil disimpan!'
+    }
+    if (msg.transaction_status === 'rejected') {
+      return 'Transaksi dibatalkan.'
+    }
     if (msg.data?.status === 'saved') {
       return 'Transaksi berhasil disimpan!'
     }
@@ -790,7 +826,7 @@ export default function ChatPage() {
                           <div className="space-y-3 sm:space-y-4">
                             {msg.content}
                             
-                            {msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && msg.data?.status !== 'saved' && msg.data?.status !== 'cancelled' && msg.data?.status !== 'error' && (
+                            {msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && msg.transaction_status !== 'accepted' && msg.transaction_status !== 'rejected' && msg.data?.status !== 'saved' && msg.data?.status !== 'cancelled' && msg.data?.status !== 'error' && (
                               <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t border-gray-100">
                                 <p className="text-xs font-semibold text-gray-500 flex items-center gap-2">
                                   <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
@@ -820,7 +856,7 @@ export default function ChatPage() {
                               </div>
                             )}
                             
-                            {msg.data?.status === 'lengkap' && msg.data?.transaksi?.[0]?.dompet && (
+                            {msg.data?.status === 'lengkap' && msg.data?.transaksi?.[0]?.dompet && msg.transaction_status !== 'accepted' && msg.transaction_status !== 'rejected' && (
                               <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-100">
                                 <Button 
                                   size="sm" 
