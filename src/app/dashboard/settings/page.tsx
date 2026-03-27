@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Settings, Wallet, Plus, Trash2, CreditCard, Loader2 } from 'lucide-react'
+import { Settings, Wallet, Plus, Trash2, CreditCard, Loader2, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useConfirm } from '@/hooks/use-confirm'
 
@@ -14,6 +14,7 @@ export default function SettingsPage() {
   const [newWallet, setNewWallet] = useState('')
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
+  const [deleting, setDeleting] = useState<number | null>(null)
   const { confirm, ConfirmDialog } = useConfirm()
   const supabase = createClient()
 
@@ -66,25 +67,60 @@ export default function SettingsPage() {
   }
 
   async function deleteWallet(id: number, name: string) {
-    const confirmed = await confirm({
-      title: "Hapus Dompet",
-      description: `Apakah Anda yakin ingin menghapus dompet "${name}"?`,
-      confirmText: "Hapus",
-      cancelText: "Batal"
-    })
+    // Check if wallet has transactions first
+    setDeleting(id)
     
-    if (!confirmed) return
+    try {
+      const { data: transactions, error: checkError } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('wallet_id', id)
+        .limit(1)
 
-    const { error } = await supabase
-      .from('wallets')
-      .delete()
-      .eq('id', id)
+      if (checkError) {
+        toast.error('Gagal memeriksa transaksi: ' + checkError.message)
+        setDeleting(null)
+        return
+      }
 
-    if (error) {
-      toast.error('Gagal menghapus dompet: ' + error.message)
-    } else {
-      toast.success('Dompet berhasil dihapus')
-      loadData()
+      // If transactions exist, show error and don't allow deletion
+      if (transactions && transactions.length > 0) {
+        toast.error(`Dompet "${name}" tidak dapat dihapus karena sudah terintegrasi dengan beberapa transaksi.`, {
+          duration: 5000,
+          icon: <AlertTriangle className="h-4 w-4 text-amber-500" />,
+        })
+        setDeleting(null)
+        return
+      }
+
+      // No transactions, ask for confirmation
+      const confirmed = await confirm({
+        title: "Hapus Dompet",
+        description: `Apakah Anda yakin ingin menghapus dompet "${name}"?`,
+        confirmText: "Hapus",
+        cancelText: "Batal"
+      })
+      
+      if (!confirmed) {
+        setDeleting(null)
+        return
+      }
+
+      const { error } = await supabase
+        .from('wallets')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        toast.error('Gagal menghapus dompet: ' + error.message)
+      } else {
+        toast.success('Dompet berhasil dihapus')
+        loadData()
+      }
+    } catch (error: any) {
+      toast.error('Terjadi kesalahan: ' + error.message)
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -122,6 +158,7 @@ export default function SettingsPage() {
               onChange={(e) => setNewWallet(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addWallet()}
               className="h-11 sm:h-12 rounded-xl border-gray-200"
+              disabled={adding}
             />
             <Button 
               onClick={() => addWallet()} 
@@ -170,14 +207,24 @@ export default function SettingsPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => deleteWallet(wallet.id, wallet.name)}
-                    className="w-9 h-9 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    disabled={deleting === wallet.id}
+                    className="w-9 h-9 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {deleting === wallet.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               ))}
             </div>
           )}
+          
+          <p className="text-xs text-gray-400 mt-4">
+            <AlertTriangle className="h-3 w-3 inline mr-1" />
+            Dompet yang sudah terintegrasi dengan transaksi tidak dapat dihapus.
+          </p>
         </CardContent>
       </Card>
       <ConfirmDialog />

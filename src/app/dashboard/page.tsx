@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Sparkles, TrendingUp, TrendingDown, Wallet, CheckCircle2, XCircle, AlertCircle, Loader2, Trash2, DollarSign } from 'lucide-react'
+import { Send, Sparkles, TrendingUp, TrendingDown, Wallet, CheckCircle2, XCircle, AlertCircle, Loader2, Trash2, DollarSign, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
@@ -28,7 +28,7 @@ export default function ChatPage() {
   const [walletsLoaded, setWalletsLoaded] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
-  const [pendingAmount, setPendingAmount] = useState<{ message: string; amount: string } | null>(null)
+  const [copiedId, setCopiedId] = useState<number | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const { confirm, ConfirmDialog } = useConfirm()
 
@@ -133,7 +133,26 @@ export default function ChatPage() {
     }
   }
 
-  const renderAssistantContent = (parsed: any) => {
+  const updateMessageInDatabase = async (messageId: number, data: any) => {
+    const supabase = createClient()
+    try {
+      const { error } = await (supabase as any)
+        .from('chat_messages')
+        .update({ data })
+        .eq('id', messageId)
+      
+      if (error) {
+        console.error('Error updating message in database:', error)
+        return false
+      }
+      return true
+    } catch (error) {
+      console.error('Failed to update message in database:', error)
+      return false
+    }
+  }
+
+  const renderAssistantContent = (parsed: any, messageIndex?: number) => {
     if (parsed.status === 'saved') {
       return (
         <div className="flex items-center gap-2 sm:gap-3 text-green-600">
@@ -152,6 +171,20 @@ export default function ChatPage() {
             <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </div>
           <span className="text-sm sm:text-base">Transaksi dibatalkan.</span>
+        </div>
+      )
+    }
+    
+    if (parsed.status === 'error') {
+      return (
+        <div className="flex items-start gap-2 sm:gap-3 text-red-600">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+            <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          </div>
+          <div>
+            <span className="font-semibold text-gray-900 text-sm sm:text-base">Gagal Menyimpan</span>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">{parsed.pesan_balasan}</p>
+          </div>
         </div>
       )
     }
@@ -184,8 +217,9 @@ export default function ChatPage() {
             <Button
               size="sm"
               onClick={() => {
-                const input = document.querySelector('input[type="number"]') as HTMLInputElement
-                if (input) {
+                const inputs = document.querySelectorAll('input[type="number"]')
+                const input = inputs[inputs.length - 1] as HTMLInputElement
+                if (input && input.value) {
                   handleAmountSubmit(parsed.originalMessage, input.value)
                 }
               }}
@@ -309,27 +343,22 @@ export default function ChatPage() {
   }
 
   const updateMessageStatus = async (messageIndex: number, newStatus: 'saved' | 'cancelled') => {
+    const updatedData = { status: newStatus }
+    
     setMessages(prev => {
       const newMessages = [...prev]
       const msg = newMessages[messageIndex]
       if (msg) {
-        const updatedData = { status: newStatus }
         msg.content = renderAssistantContent(updatedData)
         msg.data = updatedData
-        
-        if (msg.id) {
-          const supabase = createClient()
-          ;(supabase as any)
-            .from('chat_messages')
-            .update({ data: updatedData })
-            .eq('id', msg.id)
-            .then(({ error }: any) => {
-              if (error) console.error('Error updating message:', error)
-            })
-        }
       }
       return newMessages
     })
+    
+    const msg = messages[messageIndex]
+    if (msg?.id) {
+      await updateMessageInDatabase(msg.id, updatedData)
+    }
   }
 
   const handleSave = async (data: any, messageIndex: number) => {
@@ -350,8 +379,12 @@ export default function ChatPage() {
       if (result.error) throw new Error(result.error)
 
       await updateMessageStatus(messageIndex, 'saved')
+      toast.success('Transaksi berhasil disimpan!')
     } catch (error: any) {
       console.error('Save error:', error)
+      
+      await updateMessageStatus(messageIndex, 'cancelled')
+      
       const errorData = { status: 'error', pesan_balasan: error.message }
       const errorMsg: Message = {
         role: 'assistant',
@@ -362,6 +395,8 @@ export default function ChatPage() {
       const msgId = await saveMessage('assistant', error.message, errorData)
       if (msgId) errorMsg.id = msgId
       setMessages(prev => [...prev, errorMsg])
+      
+      toast.error('Transaksi gagal: ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -369,9 +404,12 @@ export default function ChatPage() {
 
   const handleCancel = async (messageIndex: number) => {
     await updateMessageStatus(messageIndex, 'cancelled')
+    toast.info('Transaksi dibatalkan')
   }
 
-  const handleWalletSelect = (walletName: string, messageIndex: number) => {
+  const handleWalletSelect = async (walletName: string, messageIndex: number) => {
+    const supabase = createClient()
+    
     setMessages(prev => {
       const newMessages = [...prev]
       const msg = newMessages[messageIndex]
@@ -380,20 +418,27 @@ export default function ChatPage() {
           tx.dompet = walletName
         }
         msg.data.status = 'lengkap'
+        msg.content = renderAssistantContent(msg.data)
         
         if (msg.id) {
-          const supabase = createClient()
-          ;(supabase as any)
-            .from('chat_messages')
-            .update({ data: msg.data })
-            .eq('id', msg.id)
-            .then(({ error }: any) => {
-              if (error) console.error('Error updating message:', error)
-            })
+          updateMessageInDatabase(msg.id, msg.data)
         }
       }
       return newMessages
     })
+  }
+
+  const copyToClipboard = async (text: string, messageId?: number) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      if (messageId) {
+        setCopiedId(messageId)
+        setTimeout(() => setCopiedId(null), 2000)
+      }
+      toast.success('Disalin ke clipboard')
+    } catch (error) {
+      toast.error('Gagal menyalin')
+    }
   }
 
   const clearChatHistory = async () => {
@@ -456,7 +501,6 @@ export default function ChatPage() {
       return
     }
     
-    setPendingAmount(null)
     setLoading(true)
     
     const combinedMessage = `${originalMessage} ${amount}`
@@ -633,6 +677,32 @@ export default function ChatPage() {
     )
   }
 
+  const getMessageText = (msg: Message): string => {
+    if (msg.role === 'user') {
+      return msg.content as string
+    }
+    
+    if (msg.data?.status === 'saved') {
+      return 'Transaksi berhasil disimpan!'
+    }
+    if (msg.data?.status === 'cancelled') {
+      return 'Transaksi dibatalkan.'
+    }
+    if (msg.data?.status === 'error') {
+      return `Gagal: ${msg.data.pesan_balasan}`
+    }
+    if (msg.data?.status === 'need_amount') {
+      return `Nominal berapa? ${msg.data.pesan_balasan || ''}`
+    }
+    
+    const tx = msg.data?.transaksi?.[0]
+    if (tx) {
+      return `Jenis: ${tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}\nJumlah: Rp ${tx.nominal?.toLocaleString('id-ID')}\nKeterangan: ${tx.keterangan}\nDompet: ${tx.dompet || 'Belum dipilih'}`
+    }
+    
+    return msg.data?.pesan_balasan || ''
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen bg-gradient-to-br from-gray-50 to-gray-100/50">
       <div 
@@ -695,83 +765,100 @@ export default function ChatPage() {
                       <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
                     </div>
                   )}
-                  <Card className={`max-w-[90%] sm:max-w-[85%] md:max-w-[75%] shadow-subtle border-0 ${
-                    msg.role === 'user' 
-                      ? 'bg-indigo-600 text-white rounded-2xl rounded-br-md' 
-                      : 'bg-white rounded-2xl rounded-bl-md'
-                  }`}>
-                    <CardContent className={`p-3 sm:p-4 ${msg.role === 'user' ? 'pb-1 sm:pb-2' : ''}`}>
-                      {msg.role === 'user' ? (
-                        <p className="leading-relaxed text-sm sm:text-base">{msg.content as string}</p>
-                      ) : (
-                        <div className="space-y-3 sm:space-y-4">
-                          {msg.content}
-                          
-                          {msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && msg.data?.status !== 'saved' && msg.data?.status !== 'cancelled' && (
-                            <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t border-gray-100">
-                              <p className="text-xs font-semibold text-gray-500 flex items-center gap-2">
-                                <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                Pilih dompet:
-                              </p>
-                              <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                                {walletsLoaded ? (
-                                  wallets.map((wallet) => (
-                                    <Button
-                                      key={wallet}
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleWalletSelect(wallet, i)}
-                                      className="text-xs h-8 sm:h-9 rounded-lg border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200"
-                                    >
-                                      {wallet}
-                                    </Button>
-                                  ))
-                                ) : (
-                                  <div className="flex gap-1.5 sm:gap-2">
-                                    <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
-                                    <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
-                                    <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
-                                  </div>
-                                )}
+                  <div className="flex flex-col max-w-[90%] sm:max-w-[85%] md:max-w-[75%]">
+                    <Card className={`shadow-subtle border-0 ${
+                      msg.role === 'user' 
+                        ? 'bg-indigo-600 text-white rounded-2xl rounded-br-md' 
+                        : 'bg-white rounded-2xl rounded-bl-md'
+                    }`}>
+                      <CardContent className={`p-3 sm:p-4 ${msg.role === 'user' ? 'pb-1 sm:pb-2' : ''}`}>
+                        {msg.role === 'user' ? (
+                          <p className="leading-relaxed text-sm sm:text-base">{msg.content as string}</p>
+                        ) : (
+                          <div className="space-y-3 sm:space-y-4">
+                            {msg.content}
+                            
+                            {msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && msg.data?.status !== 'saved' && msg.data?.status !== 'cancelled' && msg.data?.status !== 'error' && (
+                              <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t border-gray-100">
+                                <p className="text-xs font-semibold text-gray-500 flex items-center gap-2">
+                                  <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                  Pilih dompet:
+                                </p>
+                                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                  {walletsLoaded ? (
+                                    wallets.map((wallet) => (
+                                      <Button
+                                        key={wallet}
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleWalletSelect(wallet, i)}
+                                        className="text-xs h-8 sm:h-9 rounded-lg border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200"
+                                      >
+                                        {wallet}
+                                      </Button>
+                                    ))
+                                  ) : (
+                                    <div className="flex gap-1.5 sm:gap-2">
+                                      <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
+                                      <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
+                                      <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          )}
-                          
-                          {msg.data?.status === 'lengkap' && msg.data?.transaksi?.[0]?.dompet && (
-                            <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-100">
-                              <Button 
-                                size="sm" 
-                                onClick={() => handleSave(msg.data, i)}
-                                disabled={loading}
-                                className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl h-9 sm:h-10 transition-all duration-200 text-xs sm:text-sm"
-                              >
-                                {loading ? (
-                                  <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 animate-spin" />
-                                ) : (
-                                  <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                                )}
-                                {loading ? 'Menyimpan...' : 'Simpan'}
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => handleCancel(i)}
-                                disabled={loading}
-                                className="flex-1 border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 rounded-xl h-9 sm:h-10 transition-all duration-200 text-xs sm:text-sm"
-                              >
-                                <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                                Batal
-                              </Button>
-                            </div>
-                          )}
+                            )}
+                            
+                            {msg.data?.status === 'lengkap' && msg.data?.transaksi?.[0]?.dompet && (
+                              <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-100">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleSave(msg.data, i)}
+                                  disabled={loading}
+                                  className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl h-9 sm:h-10 transition-all duration-200 text-xs sm:text-sm"
+                                >
+                                  {loading ? (
+                                    <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 animate-spin" />
+                                  ) : (
+                                    <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                                  )}
+                                  {loading ? 'Menyimpan...' : 'Simpan'}
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleCancel(i)}
+                                  disabled={loading}
+                                  className="flex-1 border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 rounded-xl h-9 sm:h-10 transition-all duration-200 text-xs sm:text-sm"
+                                >
+                                  <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                                  Batal
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        <div className={`flex items-center justify-between mt-2 sm:mt-3 ${msg.role === 'user' ? 'text-white/70' : 'text-gray-400'}`}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] sm:text-xs">
+                              {msg.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => copyToClipboard(getMessageText(msg), msg.id)}
+                            className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-100 ${msg.role === 'user' ? 'hover:bg-white/20' : 'hover:bg-gray-100'}`}
+                            title="Salin"
+                          >
+                            {copiedId === msg.id ? (
+                              <Check className={`h-3 w-3 ${msg.role === 'user' ? 'text-white/70' : 'text-gray-400'}`} />
+                            ) : (
+                              <Copy className={`h-3 w-3 ${msg.role === 'user' ? 'text-white/70' : 'text-gray-400'}`} />
+                            )}
+                          </button>
                         </div>
-                      )}
-                      
-                      <div className={`text-[10px] sm:text-xs mt-2 sm:mt-3 ${msg.role === 'user' ? 'text-white/70 text-right' : 'text-gray-400'}`}>
-                        {msg.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
               ))
             )}

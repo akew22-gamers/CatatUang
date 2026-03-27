@@ -1,32 +1,122 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { TrendingDown, MinusCircle } from 'lucide-react'
+import { TrendingDown, MinusCircle, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase/client'
+
+interface Wallet {
+  id: number
+  name: string
+  saldo: number
+}
 
 export default function ExpensePage() {
   const [loading, setLoading] = useState(false)
+  const [loadingWallets, setLoadingWallets] = useState(true)
+  const [wallets, setWallets] = useState<Wallet[]>([])
   const [formData, setFormData] = useState({
     nominal: '',
     dompet: '',
     keterangan: '',
   })
 
+  useEffect(() => {
+    loadWallets()
+  }, [])
+
+  const loadWallets = async () => {
+    const supabase = createClient()
+    try {
+      const { data, error } = await supabase
+        .from('wallets')
+        .select('id, name, saldo')
+        .eq('group_id', 1)
+        .order('name')
+
+      if (error) {
+        console.error('Error loading wallets:', error)
+        toast.error('Gagal memuat data dompet')
+      } else {
+        setWallets(data || [])
+      }
+    } catch (error) {
+      console.error('Failed to load wallets:', error)
+      toast.error('Gagal memuat data dompet')
+    } finally {
+      setLoadingWallets(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!formData.nominal || !formData.dompet) {
+      toast.error('Mohon isi nominal dan pilih dompet')
+      return
+    }
+
+    const nominal = parseFloat(formData.nominal)
+    if (isNaN(nominal) || nominal <= 0) {
+      toast.error('Nominal harus berupa angka positif')
+      return
+    }
+
+    const selectedWallet = wallets.find(w => w.id === parseInt(formData.dompet))
+    if (selectedWallet && selectedWallet.saldo < nominal) {
+      toast.error(`Saldo ${selectedWallet.name} tidak mencukupi (Rp ${selectedWallet.saldo.toLocaleString('id-ID')})`)
+      return
+    }
+
     setLoading(true)
+    const supabase = createClient()
     
-    console.log('Expense form submitted:', formData)
-    
-    setTimeout(() => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error('Anda harus login terlebih dahulu')
+        return
+      }
+
+      const { error: txError } = await supabase
+        .from('transactions')
+        .insert({
+          group_id: 1,
+          user_id: user.id,
+          type: 'expense',
+          amount: nominal,
+          description: formData.keterangan || 'Pengeluaran manual',
+          wallet_id: parseInt(formData.dompet),
+          created_at: new Date().toISOString(),
+        })
+
+      if (txError) throw txError
+
+      if (selectedWallet) {
+        const { error: walletError } = await supabase
+          .from('wallets')
+          .update({ saldo: selectedWallet.saldo - nominal })
+          .eq('id', selectedWallet.id)
+
+        if (walletError) {
+          console.error('Error updating wallet saldo:', walletError)
+        }
+      }
+
+      toast.success('Pengeluaran berhasil disimpan!')
+      setFormData({ nominal: '', dompet: '', keterangan: '' })
+      loadWallets()
+    } catch (error: any) {
+      console.error('Error saving expense:', error)
+      toast.error('Gagal menyimpan pengeluaran: ' + error.message)
+    } finally {
       setLoading(false)
-      toast.info('Fitur ini akan segera hadir!')
-    }, 1000)
+    }
   }
 
   return (
@@ -61,20 +151,33 @@ export default function ExpensePage() {
                   value={formData.nominal}
                   onChange={(e) => setFormData({ ...formData, nominal: e.target.value })}
                   className="h-11 sm:h-12 pl-12 rounded-xl border-gray-200 focus:border-red-500 focus:ring-red-500"
+                  disabled={loading}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="dompet" className="text-sm font-medium text-gray-700">Dari Dompet</Label>
-              <Select value={formData.dompet} onValueChange={(v) => setFormData({ ...formData, dompet: v })}>
+              <Select 
+                value={formData.dompet} 
+                onValueChange={(v) => setFormData({ ...formData, dompet: v })}
+                disabled={loading || loadingWallets}
+              >
                 <SelectTrigger className="h-11 sm:h-12 rounded-xl border-gray-200">
-                  <SelectValue placeholder="Pilih dompet" />
+                  <SelectValue placeholder={loadingWallets ? "Memuat dompet..." : "Pilih dompet"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="bca">BCA</SelectItem>
-                  <SelectItem value="gopay">GoPay</SelectItem>
+                  {wallets.length === 0 ? (
+                    <SelectItem value="_empty" disabled>
+                      Belum ada dompet
+                    </SelectItem>
+                  ) : (
+                    wallets.map((wallet) => (
+                      <SelectItem key={wallet.id} value={wallet.id.toString()}>
+                        {wallet.name} (Rp {wallet.saldo.toLocaleString('id-ID')})
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -87,15 +190,20 @@ export default function ExpensePage() {
                 value={formData.keterangan}
                 onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
                 className="h-11 sm:h-12 rounded-xl border-gray-200"
+                disabled={loading}
               />
             </div>
 
             <Button 
               type="submit" 
               className="w-full h-11 sm:h-12 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-medium shadow-lg shadow-red-200 transition-all duration-200" 
-              disabled={loading}
+              disabled={loading || loadingWallets}
             >
-              <MinusCircle className="h-5 w-5 mr-2" />
+              {loading ? (
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+              ) : (
+                <MinusCircle className="h-5 w-5 mr-2" />
+              )}
               {loading ? 'Menyimpan...' : 'Simpan Pengeluaran'}
             </Button>
           </form>
