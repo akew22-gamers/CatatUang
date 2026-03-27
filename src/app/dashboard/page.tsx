@@ -31,11 +31,18 @@ export default function ChatPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { confirm, ConfirmDialog } = useConfirm()
 
   useEffect(() => {
     initialize()
   }, [])
+  
+  useEffect(() => {
+    if (scrollContainerRef.current && messages.length > 0) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight
+    }
+  }, [messages])
 
   const initialize = async () => {
     const supabase = createClient()
@@ -851,7 +858,7 @@ export default function ChatPage() {
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen bg-gradient-to-br from-gray-50 to-gray-100/50">
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto pb-4"
       >
         <div className="flex flex-col justify-end min-h-full p-3 sm:p-4 md:p-6 max-w-3xl mx-auto">
           <div className="space-y-4 sm:space-y-6">
@@ -1055,11 +1062,27 @@ export default function ChatPage() {
       <div className="flex-shrink-0 border-t border-gray-100 bg-white p-3 sm:p-4 md:p-6 safe-area-bottom">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
           <div className="flex gap-2 sm:gap-3 items-end bg-white rounded-2xl border border-gray-200 shadow-subtle p-2">
+            {messages.length > 0 && (
+              <Button 
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={clearChatHistory}
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200 flex-shrink-0"
+              >
+                <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+            )}
             <Textarea
+              ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value)
+                e.target.style.height = 'auto'
+                e.target.style.height = Math.min(e.target.scrollHeight, window.innerHeight * 0.2) + 'px'
+              }}
               placeholder="Tulis pesan/transaksi..."
-              className="flex-1 resize-none min-h-[48px] sm:min-h-[56px] max-h-[120px] sm:max-h-[200px] border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-700 placeholder:text-gray-400 py-2.5 sm:py-3 px-2 sm:px-3 text-sm sm:text-base"
+              className="flex-1 resize-none min-h-[48px] sm:min-h-[56px] max-h-[20vh] border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-700 placeholder:text-gray-400 py-2.5 sm:py-3 px-2 sm:px-3 text-sm sm:text-base"
               rows={1}
               disabled={loading}
               onKeyDown={(e) => {
@@ -1073,7 +1096,7 @@ export default function ChatPage() {
               type="submit" 
               size="icon"
               disabled={loading || !input.trim()}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 self-center"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
@@ -1081,17 +1104,6 @@ export default function ChatPage() {
                 <Send className="h-4 w-4 sm:h-5 sm:w-5" />
               )}
             </Button>
-            {messages.length > 0 && (
-              <Button 
-                type="button"
-                size="icon"
-                variant="ghost"
-                onClick={clearChatHistory}
-                className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200 flex-shrink-0"
-              >
-                <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-            )}
           </div>
         </form>
       </div>
