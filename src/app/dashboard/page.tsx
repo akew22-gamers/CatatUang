@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Sparkles, TrendingUp, TrendingDown, Wallet, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { Send, Sparkles, TrendingUp, TrendingDown, Wallet, CheckCircle2, XCircle, AlertCircle, Loader2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { createClient } from '@/lib/supabase/client'
 
 interface Message {
+  id?: number
   role: 'user' | 'assistant'
   content: string | React.ReactNode
   data?: any
@@ -22,11 +23,26 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false)
   const [wallets, setWallets] = useState<string[]>([])
   const [walletsLoaded, setWalletsLoaded] = useState(false)
+  const [historyLoaded, setHistoryLoaded] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    loadWallets()
+    initialize()
   }, [])
+
+  const initialize = async () => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (user) {
+      setUserId(user.id)
+      await Promise.all([
+        loadWallets(),
+        loadChatHistory(user.id)
+      ])
+    }
+  }
 
   const loadWallets = async () => {
     const supabase = createClient()
@@ -51,160 +67,141 @@ export default function ChatPage() {
     }
   }
 
-  const formatText = (text: string) => {
-    return text.split('\n').map((line, i) => (
-      <p key={i} className="min-h-[1.5rem] leading-relaxed">
-        {line.split(/(\*\*.*?\*\*)/).map((part, j) => {
-          if (part.startsWith('**') && part.endsWith('**')) {
-            return <strong key={j} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>
-          }
-          return part
-        })}
-      </p>
-    ))
-  }
-
-  const updateMessageStatus = (messageIndex: number, newStatus: 'saved' | 'cancelled') => {
-    setMessages(prev => {
-      const newMessages = [...prev]
-      const msg = newMessages[messageIndex]
-      if (msg) {
-        if (newStatus === 'saved') {
-          msg.content = (
-            <div className="flex items-center gap-2 sm:gap-3 text-green-600">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </div>
-              <span className="font-semibold text-sm sm:text-base">Transaksi berhasil disimpan!</span>
-            </div>
-          )
-        } else {
-          msg.content = (
-            <div className="flex items-center gap-2 sm:gap-3 text-gray-500">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </div>
-              <span className="text-sm sm:text-base">Transaksi dibatalkan. Silakan ketik transaksi baru.</span>
-            </div>
-          )
-        }
-        msg.data = undefined
-      }
-      return newMessages
-    })
-  }
-
-  const handleSave = async (data: any, messageIndex: number) => {
-    setLoading(true)
+  const loadChatHistory = async (uid: string) => {
+    const supabase = createClient()
+    
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-
-      const response = await fetch('/api/confirmations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user?.id || 'anonymous',
-          group_id: 1,
-          original_message: messages[messageIndex - 1]?.content as string,
-          parsed_data: data,
-        }),
-      })
-
-      const result = await response.json()
-      if (result.error) throw new Error(result.error)
-
-      updateMessageStatus(messageIndex, 'saved')
-    } catch (error: any) {
-      console.error('Save error:', error)
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: (
-          <div className="flex items-center gap-2 sm:gap-3 text-red-600">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-              <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            </div>
-            <span className="font-medium text-sm sm:text-base">Error: {error.message}</span>
-          </div>
-        ),
-        timestamp: new Date(),
-      }])
+      const { data, error } = await (supabase as any)
+        .from('chat_messages')
+        .select('*')
+        .eq('user_id', uid)
+        .eq('group_id', 1)
+        .order('created_at', { ascending: true })
+        .limit(100)
+      
+      if (error) {
+        console.error('Error loading chat history:', error)
+      } else if (data && data.length > 0) {
+        const loadedMessages: Message[] = data.map((msg: any) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.role === 'user' ? msg.content : renderAssistantContent(msg.data || { pesan_balasan: msg.content }),
+          data: msg.data,
+          timestamp: new Date(msg.created_at)
+        }))
+        setMessages(loadedMessages)
+      }
+    } catch (error) {
+      console.error('Failed to load chat history:', error)
     } finally {
-      setLoading(false)
+      setHistoryLoaded(true)
     }
   }
 
-  const handleCancel = (messageIndex: number) => {
-    updateMessageStatus(messageIndex, 'cancelled')
-  }
-
-  const handleWalletSelect = (walletName: string, messageIndex: number) => {
-    setMessages(prev => {
-      const newMessages = [...prev]
-      const msg = newMessages[messageIndex]
-      if (msg && msg.data) {
-        for (const tx of msg.data.transaksi) {
-          tx.dompet = walletName
-        }
-        msg.data.status = 'lengkap'
-      }
-      return newMessages
-    })
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || loading) return
-
-    const userMessage = input.trim()
-    setInput('')
-    setLoading(true)
+  const saveMessage = async (role: 'user' | 'assistant', content: string, data?: any) => {
+    if (!userId) return null
     
-    setMessages(prev => [...prev, { 
-      role: 'user', 
-      content: userMessage,
-      timestamp: new Date()
-    }])
-
+    const supabase = createClient()
+    
     try {
-      const response = await fetch('/api/parse-transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage }),
-      })
-
-      const result = await response.json()
-
-      if (result.error) {
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: (
-            <div className="flex items-center gap-2 sm:gap-3 text-red-600">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </div>
-              <span className="font-medium text-sm sm:text-base">Error: {result.error}</span>
-            </div>
-          ),
-          timestamp: new Date()
-        }])
-        return
+      const { data: savedData, error } = await (supabase as any)
+        .from('chat_messages')
+        .insert({
+          user_id: userId,
+          group_id: 1,
+          role,
+          content,
+          data: data || null
+        })
+        .select('id')
+        .single()
+      
+      if (error) {
+        console.error('Error saving message:', error)
+        return null
       }
+      
+      return savedData?.id
+    } catch (error) {
+      console.error('Failed to save message:', error)
+      return null
+    }
+  }
 
-      const parsed = result.data
+  const renderAssistantContent = (parsed: any) => {
+    if (parsed.status === 'saved') {
+      return (
+        <div className="flex items-center gap-2 sm:gap-3 text-green-600">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+            <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          </div>
+          <span className="font-semibold text-sm sm:text-base">Transaksi berhasil disimpan!</span>
+        </div>
+      )
+    }
+    
+    if (parsed.status === 'cancelled') {
+      return (
+        <div className="flex items-center gap-2 sm:gap-3 text-gray-500">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          </div>
+          <span className="text-sm sm:text-base">Transaksi dibatalkan.</span>
+        </div>
+      )
+    }
+    
+    if (parsed.status === 'lengkap') {
+      const tx = parsed.transaksi?.[0]
+      if (!tx) return parsed.pesan_balasan || ''
       
-      let content: React.ReactNode = null
-      
-      if (parsed.status === 'lengkap') {
-        const tx = parsed.transaksi[0]
-        content = (
-          <div className="space-y-3 sm:space-y-4">
-            <div className="flex items-center gap-2 sm:gap-3 text-green-600">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </div>
-              <span className="font-semibold text-gray-900 text-sm sm:text-base">Transaksi Siap Disimpan</span>
+      return (
+        <div className="space-y-3 sm:space-y-4">
+          <div className="flex items-center gap-2 sm:gap-3 text-green-600">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
+            <span className="font-semibold text-gray-900 text-sm sm:text-base">Transaksi Siap Disimpan</span>
+          </div>
+          <div className="grid gap-2 sm:gap-3 text-sm bg-gray-50/50 rounded-xl p-3 sm:p-4">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500 text-xs sm:text-sm">Jenis:</span>
+              <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-xs">
+                {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
+              </Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500 text-xs sm:text-sm">Jumlah:</span>
+              <span className="font-semibold text-gray-900 text-sm sm:text-base">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500 text-xs sm:text-sm">Keterangan:</span>
+              <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500 text-xs sm:text-sm">Dompet:</span>
+              <span className="font-medium text-gray-900 text-xs sm:text-sm">{tx.dompet || 'Belum dipilih'}</span>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    
+    if (parsed.status === 'kurang_data') {
+      const tx = parsed.transaksi?.[0]
+      
+      return (
+        <div className="space-y-3 sm:space-y-4">
+          <div className="flex items-start gap-2 sm:gap-3 text-amber-600">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            </div>
+            <div>
+              <span className="font-semibold text-gray-900 text-sm sm:text-base">Data Belum Lengkap</span>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">{parsed.pesan_balasan}</p>
+            </div>
+          </div>
+          {tx && (
             <div className="grid gap-2 sm:gap-3 text-sm bg-gray-50/50 rounded-xl p-3 sm:p-4">
               <div className="flex justify-between items-center">
                 <span className="text-gray-500 text-xs sm:text-sm">Jenis:</span>
@@ -222,90 +219,236 @@ export default function ChatPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-500 text-xs sm:text-sm">Dompet:</span>
-                <span className="font-medium text-gray-900 text-xs sm:text-sm">{tx.dompet || 'Belum dipilih'}</span>
+                <span className="font-medium text-amber-600 text-xs sm:text-sm">Belum dipilih</span>
               </div>
             </div>
+          )}
+        </div>
+      )
+    }
+    
+    if (parsed.status === 'ambigu') {
+      return (
+        <div className="flex items-start gap-2 sm:gap-3 text-amber-600">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </div>
-        )
-      } else if (parsed.status === 'kurang_data') {
-        const tx = parsed.transaksi[0]
-        content = (
-          <div className="space-y-3 sm:space-y-4">
-            <div className="flex items-start gap-2 sm:gap-3 text-amber-600">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </div>
-              <div>
-                <span className="font-semibold text-gray-900 text-sm sm:text-base">Data Belum Lengkap</span>
-                <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">{parsed.pesan_balasan}</p>
-              </div>
-            </div>
-            {tx && (
-              <div className="grid gap-2 sm:gap-3 text-sm bg-gray-50/50 rounded-xl p-3 sm:p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500 text-xs sm:text-sm">Jenis:</span>
-                  <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-xs">
-                    {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500 text-xs sm:text-sm">Jumlah:</span>
-                  <span className="font-semibold text-gray-900 text-sm sm:text-base">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500 text-xs sm:text-sm">Keterangan:</span>
-                  <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500 text-xs sm:text-sm">Dompet:</span>
-                  <span className="font-medium text-amber-600 text-xs sm:text-sm">Belum dipilih</span>
-                </div>
-              </div>
-            )}
+          <div>
+            <span className="font-semibold text-gray-900 text-sm sm:text-base">Data Ambigu</span>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">{parsed.pesan_balasan}</p>
           </div>
-        )
-      } else if (parsed.status === 'ambigu') {
-        content = (
-          <div className="flex items-start gap-2 sm:gap-3 text-amber-600">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-              <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            </div>
-            <div>
-              <span className="font-semibold text-gray-900 text-sm sm:text-base">Data Ambigu</span>
-              <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">{parsed.pesan_balasan}</p>
-            </div>
-          </div>
-        )
-      } else {
-        content = (
-          <div className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-            {formatText(parsed.pesan_balasan)}
-          </div>
-        )
-      }
+        </div>
+      )
+    }
+    
+    return (
+      <div className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+        {parsed.pesan_balasan || ''}
+      </div>
+    )
+  }
 
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content,
-        data: parsed,
-        timestamp: new Date()
-      }])
+  const formatText = (text: string) => {
+    return text.split('\n').map((line, i) => (
+      <p key={i} className="min-h-[1.5rem] leading-relaxed">
+        {line.split(/(\*\*.*?\*\*)/).map((part, j) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={j} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>
+          }
+          return part
+        })}
+      </p>
+    ))
+  }
+
+  const updateMessageStatus = async (messageIndex: number, newStatus: 'saved' | 'cancelled') => {
+    setMessages(prev => {
+      const newMessages = [...prev]
+      const msg = newMessages[messageIndex]
+      if (msg) {
+        const updatedData = { status: newStatus }
+        msg.content = renderAssistantContent(updatedData)
+        msg.data = updatedData
+        
+        if (msg.id) {
+          const supabase = createClient()
+          ;(supabase as any)
+            .from('chat_messages')
+            .update({ data: updatedData })
+            .eq('id', msg.id)
+            .then(({ error }: any) => {
+              if (error) console.error('Error updating message:', error)
+            })
+        }
+      }
+      return newMessages
+    })
+  }
+
+  const handleSave = async (data: any, messageIndex: number) => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/confirmations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId || 'anonymous',
+          group_id: 1,
+          original_message: messages[messageIndex - 1]?.content as string,
+          parsed_data: data,
+        }),
+      })
+
+      const result = await response.json()
+      if (result.error) throw new Error(result.error)
+
+      await updateMessageStatus(messageIndex, 'saved')
     } catch (error: any) {
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: (
-          <div className="flex items-center gap-2 sm:gap-3 text-red-600">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-              <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            </div>
-            <span className="font-medium text-sm sm:text-base">Error: {error.message}</span>
-          </div>
-        ),
-        timestamp: new Date()
-      }])
+      console.error('Save error:', error)
+      const errorData = { status: 'error', pesan_balasan: error.message }
+      const errorMsg: Message = {
+        role: 'assistant',
+        content: renderAssistantContent(errorData),
+        data: errorData,
+        timestamp: new Date(),
+      }
+      const msgId = await saveMessage('assistant', error.message, errorData)
+      if (msgId) errorMsg.id = msgId
+      setMessages(prev => [...prev, errorMsg])
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleCancel = async (messageIndex: number) => {
+    await updateMessageStatus(messageIndex, 'cancelled')
+  }
+
+  const handleWalletSelect = (walletName: string, messageIndex: number) => {
+    setMessages(prev => {
+      const newMessages = [...prev]
+      const msg = newMessages[messageIndex]
+      if (msg && msg.data) {
+        for (const tx of msg.data.transaksi) {
+          tx.dompet = walletName
+        }
+        msg.data.status = 'lengkap'
+        
+        if (msg.id) {
+          const supabase = createClient()
+          ;(supabase as any)
+            .from('chat_messages')
+            .update({ data: msg.data })
+            .eq('id', msg.id)
+            .then(({ error }: any) => {
+              if (error) console.error('Error updating message:', error)
+            })
+        }
+      }
+      return newMessages
+    })
+  }
+
+  const clearChatHistory = async () => {
+    if (!userId || !confirm('Hapus semua riwayat chat?')) return
+    
+    const supabase = createClient()
+    
+    try {
+      const { error } = await (supabase as any)
+        .from('chat_messages')
+        .delete()
+        .eq('user_id', userId)
+        .eq('group_id', 1)
+      
+      if (error) {
+        console.error('Error clearing chat:', error)
+      } else {
+        setMessages([])
+      }
+    } catch (error) {
+      console.error('Failed to clear chat:', error)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || loading) return
+
+    const userMessage = input.trim()
+    setInput('')
+    setLoading(true)
+    
+    const userMsg: Message = {
+      role: 'user',
+      content: userMessage,
+      timestamp: new Date()
+    }
+    
+    const userMsgId = await saveMessage('user', userMessage)
+    if (userMsgId) userMsg.id = userMsgId
+    setMessages(prev => [...prev, userMsg])
+
+    try {
+      const response = await fetch('/api/parse-transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage }),
+      })
+
+      const result = await response.json()
+
+      if (result.error) {
+        const errorData = { status: 'error', pesan_balasan: result.error }
+        const errorMsg: Message = {
+          role: 'assistant',
+          content: renderAssistantContent(errorData),
+          data: errorData,
+          timestamp: new Date(),
+        }
+        const msgId = await saveMessage('assistant', result.error, errorData)
+        if (msgId) errorMsg.id = msgId
+        setMessages(prev => [...prev, errorMsg])
+        return
+      }
+
+      const parsed = result.data
+      
+      const assistantMsg: Message = {
+        role: 'assistant',
+        content: renderAssistantContent(parsed),
+        data: parsed,
+        timestamp: new Date()
+      }
+      
+      const msgId = await saveMessage('assistant', parsed.pesan_balasan || '', parsed)
+      if (msgId) assistantMsg.id = msgId
+      setMessages(prev => [...prev, assistantMsg])
+    } catch (error: any) {
+      const errorData = { status: 'error', pesan_balasan: error.message }
+      const errorMsg: Message = {
+        role: 'assistant',
+        content: renderAssistantContent(errorData),
+        data: errorData,
+        timestamp: new Date(),
+      }
+      const msgId = await saveMessage('assistant', error.message, errorData)
+      if (msgId) errorMsg.id = msgId
+      setMessages(prev => [...prev, errorMsg])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!historyLoaded) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] md:h-screen bg-gradient-to-br from-gray-50 to-gray-100/50">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-3 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground font-medium">Memuat chat...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -361,7 +504,7 @@ export default function ChatPage() {
             ) : (
               messages.map((msg, i) => (
                 <div
-                  key={i}
+                  key={msg.id || i}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
                   style={{ animationDelay: `${i * 50}ms` }}
                 >
@@ -382,7 +525,7 @@ export default function ChatPage() {
                         <div className="space-y-3 sm:space-y-4">
                           {msg.content}
                           
-                          {msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && (
+                          {msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && msg.data?.status !== 'saved' && msg.data?.status !== 'cancelled' && (
                             <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t border-gray-100">
                               <p className="text-xs font-semibold text-gray-500 flex items-center gap-2">
                                 <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
@@ -483,6 +626,17 @@ export default function ChatPage() {
                 <Send className="h-4 w-4 sm:h-5 sm:w-5" />
               )}
             </Button>
+            {messages.length > 0 && (
+              <Button 
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={clearChatHistory}
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200 flex-shrink-0"
+              >
+                <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+            )}
           </div>
         </form>
       </div>
