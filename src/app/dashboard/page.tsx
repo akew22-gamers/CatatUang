@@ -360,13 +360,14 @@ export default function ChatPage() {
     
     if (msg.id) {
       const supabase = createClient()
-      try {
-        await (supabase as any)
-          .from('chat_messages')
-          .update({ data: updatedData })
-          .eq('id', msg.id)
-      } catch (error) {
+      const { error } = await (supabase as any)
+        .from('chat_messages')
+        .update({ data: updatedData })
+        .eq('id', msg.id)
+      
+      if (error) {
         console.error('Error updating message in database:', error)
+        toast.error('Gagal memperbarui status di database')
       }
     }
   }
