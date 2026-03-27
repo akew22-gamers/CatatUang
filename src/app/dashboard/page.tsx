@@ -343,27 +343,28 @@ export default function ChatPage() {
   }
 
   const updateMessageStatus = async (messageIndex: number, newStatus: 'saved' | 'cancelled') => {
-    let messageIdToUpdate: number | undefined
+    const msg = messages[messageIndex]
+    if (!msg) return
+    
+    const updatedData = { ...msg.data, status: newStatus }
     
     setMessages(prev => {
       const newMessages = [...prev]
-      const msg = newMessages[messageIndex]
-      if (msg) {
-        const updatedData = { ...msg.data, status: newStatus }
-        msg.content = renderAssistantContent(updatedData)
-        msg.data = updatedData
-        messageIdToUpdate = msg.id
+      const currentMsg = newMessages[messageIndex]
+      if (currentMsg) {
+        currentMsg.content = renderAssistantContent(updatedData)
+        currentMsg.data = updatedData
       }
       return newMessages
     })
     
-    if (messageIdToUpdate) {
+    if (msg.id) {
       const supabase = createClient()
       try {
         await (supabase as any)
           .from('chat_messages')
-          .update({ data: { status: newStatus } })
-          .eq('id', messageIdToUpdate)
+          .update({ data: updatedData })
+          .eq('id', msg.id)
       } catch (error) {
         console.error('Error updating message in database:', error)
       }
