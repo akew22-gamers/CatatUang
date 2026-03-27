@@ -183,6 +183,34 @@ export default function ChatPage() {
       )
     }
     
+    if (parsed.status === 'cek_saldo') {
+      const saldoInfo = parsed.saldo_info || []
+      const totalSaldo = parsed.total_saldo || 0
+      
+      return (
+        <div className="space-y-3 sm:space-y-4">
+          <div className="flex items-center gap-2 sm:gap-3 text-indigo-600">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+              <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            </div>
+            <span className="font-semibold text-gray-900 text-sm sm:text-base">Saldo Dompet</span>
+          </div>
+          <div className="grid gap-2 sm:gap-3 text-sm bg-gray-50/50 rounded-xl p-3 sm:p-4">
+            {saldoInfo.map((wallet: any, idx: number) => (
+              <div key={idx} className="flex justify-between items-center">
+                <span className="text-gray-600 text-xs sm:text-sm">{wallet.name}</span>
+                <span className="font-semibold text-gray-900 text-xs sm:text-sm">Rp {wallet.saldo.toLocaleString('id-ID')}</span>
+              </div>
+            ))}
+            <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+              <span className="font-semibold text-gray-700 text-xs sm:text-sm">Total</span>
+              <span className="font-bold text-indigo-600 text-sm sm:text-base">Rp {totalSaldo.toLocaleString('id-ID')}</span>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    
     if (parsed.status === 'saved') {
       return (
         <div className="flex items-center gap-2 sm:gap-3 text-green-600">
@@ -729,6 +757,16 @@ export default function ChatPage() {
     }
     if (msg.transaction_status === 'rejected') {
       return 'Transaksi dibatalkan.'
+    }
+    if (msg.data?.status === 'cek_saldo') {
+      const saldoInfo = msg.data?.saldo_info || []
+      const totalSaldo = msg.data?.total_saldo || 0
+      let text = 'Saldo Dompet:\n'
+      saldoInfo.forEach((w: any) => {
+        text += `${w.name}: Rp ${w.saldo.toLocaleString('id-ID')}\n`
+      })
+      text += `Total: Rp ${totalSaldo.toLocaleString('id-ID')}`
+      return text
     }
     if (msg.data?.status === 'saved') {
       return 'Transaksi berhasil disimpan!'

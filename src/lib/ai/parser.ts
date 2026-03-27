@@ -15,18 +15,19 @@ export interface ParsedTransaction {
 }
 
 export interface ParseResult {
-  status: 'lengkap' | 'kurang_data' | 'ambigu' | 'tidak_relevan' | 'permintaan_laporan'
+  status: 'lengkap' | 'kurang_data' | 'ambigu' | 'tidak_relevan' | 'permintaan_laporan' | 'cek_saldo'
   transaksi: ParsedTransaction[]
   pesan_balasan: string
 }
 
 export interface ParserContext {
   wallets: string[]
+  walletsSaldo?: { name: string; saldo: number }[]
   group_id?: number
 }
 
 function validateParseResult(result: any): ParseResult {
-  const validStatuses = ['lengkap', 'kurang_data', 'ambigu', 'tidak_relevan', 'permintaan_laporan']
+  const validStatuses = ['lengkap', 'kurang_data', 'ambigu', 'tidak_relevan', 'permintaan_laporan', 'cek_saldo']
   
   if (!result || typeof result !== 'object') {
     throw new Error('Invalid response format')
@@ -107,7 +108,17 @@ function mockParseFinancialChat(
 ): ParseResult {
   const lowerMessage = message.toLowerCase()
   
-  // Better income detection
+  const saldoKeywords = ['cek saldo', 'lihat saldo', 'saldo berapa', 'berapa saldo', 'info saldo', 'total saldo', 'saldo dompet']
+  const isCekSaldo = saldoKeywords.some(kw => lowerMessage.includes(kw))
+  
+  if (isCekSaldo) {
+    return {
+      status: 'cek_saldo',
+      transaksi: [],
+      pesan_balasan: 'Menampilkan saldo dompet...',
+    }
+  }
+  
   const incomeKeywords = ['gaji', 'terima', 'masuk', 'bonus', 'komisi', 'affiliate', 'refund', 'cashback', 'pendapatan', 'penghasilan']
   const expenseKeywords = ['beli', 'belanja', 'bayar', 'makan', 'minum', 'transfer ke', 'kirim ke', 'topup', 'top up', 'nonton', 'beli']
   
