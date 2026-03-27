@@ -162,23 +162,73 @@ export default function ChatPage() {
 
   const renderAssistantContent = (parsed: any, transactionStatus?: 'pending' | 'accepted' | 'rejected' | null) => {
     if (transactionStatus === 'accepted') {
+      const tx = parsed.transaksi?.[0]
       return (
-        <div className="flex items-center gap-2 sm:gap-3 text-green-600">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-            <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+        <div className="space-y-2 sm:space-y-3">
+          <div className="flex items-center gap-2 sm:gap-3 text-green-700">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-200 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            </div>
+            <span className="font-semibold text-sm sm:text-base">Berhasil Disimpan</span>
           </div>
-          <span className="font-semibold text-sm sm:text-base">Transaksi berhasil disimpan!</span>
+          {tx && (
+            <div className="grid gap-1.5 sm:gap-2 text-xs sm:text-sm bg-green-50/50 rounded-lg p-2.5 sm:p-3 border border-green-100">
+              <div className="flex justify-between items-center">
+                <span className="text-green-600">Jenis:</span>
+                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-[10px] sm:text-xs">
+                  {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-green-600">Jumlah:</span>
+                <span className="font-semibold text-gray-900 text-xs sm:text-sm">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-green-600">Keterangan:</span>
+                <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-green-600">Dompet:</span>
+                <span className="font-medium text-gray-900 text-xs sm:text-sm">{tx.dompet || '-'}</span>
+              </div>
+            </div>
+          )}
         </div>
       )
     }
     
     if (transactionStatus === 'rejected') {
+      const tx = parsed.transaksi?.[0]
       return (
-        <div className="flex items-center gap-2 sm:gap-3 text-gray-500">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-            <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+        <div className="space-y-2 sm:space-y-3">
+          <div className="flex items-center gap-2 sm:gap-3 text-red-700">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-red-200 flex items-center justify-center flex-shrink-0">
+              <XCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            </div>
+            <span className="font-semibold text-sm sm:text-base">Dibatalkan</span>
           </div>
-          <span className="text-sm sm:text-base">Transaksi dibatalkan.</span>
+          {tx && (
+            <div className="grid gap-1.5 sm:gap-2 text-xs sm:text-sm bg-red-50/50 rounded-lg p-2.5 sm:p-3 border border-red-100">
+              <div className="flex justify-between items-center">
+                <span className="text-red-600">Jenis:</span>
+                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-[10px] sm:text-xs">
+                  {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-red-600">Jumlah:</span>
+                <span className="font-semibold text-gray-900 text-xs sm:text-sm">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-red-600">Keterangan:</span>
+                <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-red-600">Dompet:</span>
+                <span className="font-medium text-gray-900 text-xs sm:text-sm">{tx.dompet || '-'}</span>
+              </div>
+            </div>
+          )}
         </div>
       )
     }
@@ -753,9 +803,17 @@ export default function ChatPage() {
     }
     
     if (msg.transaction_status === 'accepted') {
+      const tx = msg.data?.transaksi?.[0]
+      if (tx) {
+        return `Status: Berhasil Disimpan\nJenis: ${tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}\nJumlah: Rp ${tx.nominal?.toLocaleString('id-ID')}\nKeterangan: ${tx.keterangan}\nDompet: ${tx.dompet || '-'}`
+      }
       return 'Transaksi berhasil disimpan!'
     }
     if (msg.transaction_status === 'rejected') {
+      const tx = msg.data?.transaksi?.[0]
+      if (tx) {
+        return `Status: Dibatalkan\nJenis: ${tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}\nJumlah: Rp ${tx.nominal?.toLocaleString('id-ID')}\nKeterangan: ${tx.keterangan}\nDompet: ${tx.dompet || '-'}`
+      }
       return 'Transaksi dibatalkan.'
     }
     if (msg.data?.status === 'cek_saldo') {
@@ -843,11 +901,17 @@ export default function ChatPage() {
               messages.map((msg, i) => (
                 <div
                   key={msg.id || i}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up group`}
                   style={{ animationDelay: `${i * 50}ms` }}
                 >
                   {msg.role === 'assistant' && (
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mr-2 sm:mr-3 mt-1 flex-shrink-0 shadow-md">
+                    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center mr-2 sm:mr-3 mt-1 flex-shrink-0 shadow-md ${
+                      msg.transaction_status === 'accepted' 
+                        ? 'bg-gradient-to-br from-green-500 to-emerald-600' 
+                        : msg.transaction_status === 'rejected'
+                        ? 'bg-gradient-to-br from-red-500 to-rose-600'
+                        : 'bg-gradient-to-br from-indigo-500 to-purple-600'
+                    }`}>
                       <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
                     </div>
                   )}
@@ -855,6 +919,10 @@ export default function ChatPage() {
                     <Card className={`shadow-subtle border-0 ${
                       msg.role === 'user' 
                         ? 'bg-indigo-600 text-white rounded-2xl rounded-br-md' 
+                        : msg.transaction_status === 'accepted'
+                        ? 'bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl rounded-bl-md'
+                        : msg.transaction_status === 'rejected'
+                        ? 'bg-gradient-to-br from-red-50 to-rose-50 border border-red-200 rounded-2xl rounded-bl-md'
                         : 'bg-white rounded-2xl rounded-bl-md'
                     }`}>
                       <CardContent className={`p-3 sm:p-4 ${msg.role === 'user' ? 'pb-1 sm:pb-2' : ''}`}>
@@ -924,7 +992,15 @@ export default function ChatPage() {
                           </div>
                         )}
                         
-                        <div className={`flex items-center justify-between mt-2 sm:mt-3 ${msg.role === 'user' ? 'text-white/70' : 'text-gray-400'}`}>
+                        <div className={`flex items-center justify-between mt-2 sm:mt-3 ${
+                          msg.role === 'user' 
+                            ? 'text-white/70' 
+                            : msg.transaction_status === 'accepted'
+                            ? 'text-green-600'
+                            : msg.transaction_status === 'rejected'
+                            ? 'text-red-600'
+                            : 'text-gray-400'
+                        }`}>
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] sm:text-xs">
                               {msg.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
@@ -932,13 +1008,37 @@ export default function ChatPage() {
                           </div>
                           <button
                             onClick={() => copyToClipboard(getMessageText(msg), msg.id)}
-                            className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-100 ${msg.role === 'user' ? 'hover:bg-white/20' : 'hover:bg-gray-100'}`}
+                            className={`opacity-50 hover:opacity-100 transition-opacity p-1 rounded ${
+                              msg.role === 'user' 
+                                ? 'hover:bg-white/20' 
+                                : msg.transaction_status === 'accepted'
+                                ? 'hover:bg-green-100'
+                                : msg.transaction_status === 'rejected'
+                                ? 'hover:bg-red-100'
+                                : 'hover:bg-gray-100'
+                            }`}
                             title="Salin"
                           >
                             {copiedId === msg.id ? (
-                              <Check className={`h-3 w-3 ${msg.role === 'user' ? 'text-white/70' : 'text-gray-400'}`} />
+                              <Check className={`h-3 w-3 ${
+                                msg.role === 'user' 
+                                  ? 'text-white/70' 
+                                  : msg.transaction_status === 'accepted'
+                                  ? 'text-green-600'
+                                  : msg.transaction_status === 'rejected'
+                                  ? 'text-red-600'
+                                  : 'text-gray-400'
+                              }`} />
                             ) : (
-                              <Copy className={`h-3 w-3 ${msg.role === 'user' ? 'text-white/70' : 'text-gray-400'}`} />
+                              <Copy className={`h-3 w-3 ${
+                                msg.role === 'user' 
+                                  ? 'text-white/70' 
+                                  : msg.transaction_status === 'accepted'
+                                  ? 'text-green-600'
+                                  : msg.transaction_status === 'rejected'
+                                  ? 'text-red-600'
+                                  : 'text-gray-400'
+                              }`} />
                             )}
                           </button>
                         </div>
