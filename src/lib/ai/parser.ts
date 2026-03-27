@@ -15,7 +15,7 @@ export interface ParsedTransaction {
 }
 
 export interface ParseResult {
-  status: 'lengkap' | 'kurang_data' | 'ambigu' | 'tidak_relevan' | 'permintaan_laporan' | 'cek_saldo'
+  status: 'lengkap' | 'kurang_data' | 'ambigu' | 'tidak_relevan' | 'permintaan_laporan' | 'cek_saldo' | 'cek_profile'
   transaksi: ParsedTransaction[]
   pesan_balasan: string
 }
@@ -27,7 +27,7 @@ export interface ParserContext {
 }
 
 function validateParseResult(result: any): ParseResult {
-  const validStatuses = ['lengkap', 'kurang_data', 'ambigu', 'tidak_relevan', 'permintaan_laporan', 'cek_saldo']
+  const validStatuses = ['lengkap', 'kurang_data', 'ambigu', 'tidak_relevan', 'permintaan_laporan', 'cek_saldo', 'cek_profile']
   
   if (!result || typeof result !== 'object') {
     throw new Error('Invalid response format')
@@ -107,6 +107,17 @@ function mockParseFinancialChat(
   context: ParserContext
 ): ParseResult {
   const lowerMessage = message.toLowerCase()
+  
+  const profileKeywords = ['profile', 'profil', 'cek profile', 'lihat profile', 'detail profile', 'cek profil', 'lihat profil', 'detail profil', 'info profile', 'data saya', 'akun saya']
+  const isCekProfile = profileKeywords.some(kw => lowerMessage.includes(kw))
+  
+  if (isCekProfile) {
+    return {
+      status: 'cek_profile',
+      transaksi: [],
+      pesan_balasan: 'Menampilkan profil Anda...',
+    }
+  }
   
   const saldoKeywords = ['cek saldo', 'lihat saldo', 'saldo berapa', 'berapa saldo', 'info saldo', 'total saldo', 'saldo dompet']
   const isCekSaldo = saldoKeywords.some(kw => lowerMessage.includes(kw))

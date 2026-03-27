@@ -7,7 +7,7 @@ Tugas Anda adalah menganalisis chat user dan mengekstrak informasi transaksi keu
 <output_format>
 WAJIB output HANYA JSON valid dengan schema ini (tanpa markdown, tanpa teks pembuka/penutup):
 {
-  "status": "lengkap" | "kurang_data" | "ambigu" | "tidak_relevan" | "permintaan_laporan" | "cek_saldo",
+  "status": "lengkap" | "kurang_data" | "ambigu" | "tidak_relevan" | "permintaan_laporan" | "cek_saldo" | "cek_profile",
   "transaksi": [
     {
       "jenis": "pemasukan" | "pengeluaran",
@@ -49,6 +49,12 @@ DEFINISI STATUS (WAJIB DIPATUHI):
    - "cek saldo", "lihat saldo", "saldo berapa", "saldo dompet"
    - "berapa saldo", "info saldo", "total saldo"
    - transaksi: [], pesan_balasan: "Menampilkan saldo dompet..."
+
+7. "cek_profile" → User mau LIHAT PROFIL:
+   - "profile", "profil", "cek profile", "lihat profile", "detail profile"
+   - "cek profil", "lihat profil", "detail profil", "info profile"
+   - "data saya", "akun saya"
+   - transaksi: [], pesan_balasan: "Menampilkan profil Anda..."
 </status_rules>
 
 <edge_case_rules>

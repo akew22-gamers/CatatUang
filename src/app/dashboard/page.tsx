@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Sparkles, TrendingUp, TrendingDown, Wallet, CheckCircle2, XCircle, AlertCircle, Loader2, Trash2, DollarSign, Copy, Check } from 'lucide-react'
+import { Send, Sparkles, TrendingUp, TrendingDown, Wallet, CheckCircle2, XCircle, AlertCircle, Loader2, Trash2, DollarSign, Copy, Check, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,6 +19,40 @@ interface Message {
   data?: any
   transaction_status?: 'pending' | 'accepted' | 'rejected' | null
   timestamp: Date
+  sender_id?: string
+  sender_name?: string
+  sender_role?: 'admin' | 'user'
+  reply_to?: {
+    sender_name: string
+    sender_role: 'admin' | 'user'
+  }
+}
+
+const userColors = [
+  'bg-indigo-600',
+  'bg-emerald-600',
+  'bg-amber-600',
+  'bg-rose-600',
+  'bg-cyan-600',
+  'bg-violet-600',
+  'bg-pink-600',
+  'bg-teal-600',
+]
+
+const getUserColor = (senderId: string, currentUserId: string) => {
+  if (senderId === currentUserId) return 'bg-indigo-600'
+  const index = Math.abs(hashCode(senderId)) % (userColors.length - 1) + 1
+  return userColors[index]
+}
+
+const hashCode = (str: string) => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash
+  }
+  return hash
 }
 
 export default function ChatPage() {
@@ -29,6 +63,8 @@ export default function ChatPage() {
   const [walletsLoaded, setWalletsLoaded] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [userName, setUserName] = useState<string>('')
+  const [userRole, setUserRole] = useState<'admin' | 'user'>('user')
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -50,10 +86,30 @@ export default function ChatPage() {
     
     if (user) {
       setUserId(user.id)
+      
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, role, email')
+        .eq('id', user.id)
+        .single()
+      
+      if (profileError) {
+        console.error('Error loading profile:', profileError)
+      }
+      
+      if (profile) {
+        setUserName(profile.full_name || profile.email || 'User')
+        setUserRole((profile.role as 'admin' | 'user') || 'user')
+      }
+      
       await Promise.all([
         loadWallets(),
-        loadChatHistory(user.id)
+        loadChatHistory()
       ])
+    } else {
+      console.error('No user found in initialize')
+      setHistoryLoaded(true)
+      setWalletsLoaded(true)
     }
   }
 
@@ -80,14 +136,13 @@ export default function ChatPage() {
     }
   }
 
-  const loadChatHistory = async (uid: string) => {
+  const loadChatHistory = async () => {
     const supabase = createClient()
     
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
-        .eq('user_id', uid)
         .eq('group_id', 1)
         .order('created_at', { ascending: true })
         .limit(100)
@@ -95,14 +150,36 @@ export default function ChatPage() {
       if (error) {
         console.error('Error loading chat history:', error)
       } else if (data && data.length > 0) {
-        const loadedMessages: Message[] = data.map((msg: any) => ({
-          id: msg.id,
-          role: msg.role,
-          content: msg.role === 'user' ? msg.content : renderAssistantContent(msg.data || { pesan_balasan: msg.content }, msg.transaction_status),
-          data: msg.data,
-          transaction_status: msg.transaction_status,
-          timestamp: new Date(msg.created_at)
-        }))
+        const loadedMessages: Message[] = data.map((msg: any) => {
+          try {
+            return {
+              id: msg.id,
+              role: msg.role,
+              content: msg.role === 'user' ? msg.content : renderAssistantContent(msg.data || { pesan_balasan: msg.content }, msg.transaction_status, msg.reply_to),
+              data: msg.data,
+              transaction_status: msg.transaction_status,
+              timestamp: new Date(msg.created_at),
+              sender_id: msg.user_id,
+              sender_name: msg.sender_name,
+              sender_role: msg.sender_role,
+              reply_to: msg.reply_to
+            }
+          } catch (e) {
+            console.error('Error processing message:', e, msg)
+            return {
+              id: msg.id,
+              role: msg.role,
+              content: msg.content || 'Error loading message',
+              data: msg.data,
+              transaction_status: msg.transaction_status,
+              timestamp: new Date(msg.created_at),
+              sender_id: msg.user_id,
+              sender_name: msg.sender_name,
+              sender_role: msg.sender_role,
+              reply_to: msg.reply_to
+            }
+          }
+        })
         setMessages(loadedMessages)
       }
     } catch (error) {
@@ -122,7 +199,9 @@ export default function ChatPage() {
       group_id: 1,
       role,
       content,
-      data: data || null
+      data: data || null,
+      sender_name: userName,
+      sender_role: userRole
     }
     
     if (role === 'assistant' && data?.transaksi) {
@@ -130,7 +209,7 @@ export default function ChatPage() {
     }
     
     try {
-      const { data: savedData, error } = await (supabase as any)
+      const { data: savedData, error } = await supabase
         .from('chat_messages')
         .insert(insertData)
         .select('id')
@@ -167,10 +246,26 @@ export default function ChatPage() {
     }
   }
 
-  const renderAssistantContent = (parsed: any, transactionStatus?: 'pending' | 'accepted' | 'rejected' | null) => {
+  const renderAssistantContent = (parsed: any, transactionStatus?: 'pending' | 'accepted' | 'rejected' | null, replyTo?: { sender_name: string; sender_role: 'admin' | 'user' }) => {
+    const renderWithReplyTo = (content: React.ReactNode) => {
+      if (!replyTo) return content
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 rounded-md px-2 py-1.5">
+            <User className="h-3 w-3" />
+            <span className="font-medium">Balasan untuk {replyTo.sender_name}</span>
+            {replyTo.sender_role === 'admin' && (
+              <Badge variant="default" className="text-[9px] h-4 px-1">Admin</Badge>
+            )}
+          </div>
+          {content}
+        </div>
+      )
+    }
+
     if (transactionStatus === 'accepted') {
       const tx = parsed.transaksi?.[0]
-      return (
+      return renderWithReplyTo(
         <div className="space-y-2 sm:space-y-3">
           <div className="flex items-center gap-2 sm:gap-3 text-green-700">
             <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-200 flex items-center justify-center flex-shrink-0">
@@ -206,7 +301,7 @@ export default function ChatPage() {
     
     if (transactionStatus === 'rejected') {
       const tx = parsed.transaksi?.[0]
-      return (
+      return renderWithReplyTo(
         <div className="space-y-2 sm:space-y-3">
           <div className="flex items-center gap-2 sm:gap-3 text-red-700">
             <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-red-200 flex items-center justify-center flex-shrink-0">
@@ -244,7 +339,7 @@ export default function ChatPage() {
       const saldoInfo = parsed.saldo_info || []
       const totalSaldo = parsed.total_saldo || 0
       
-      return (
+      return renderWithReplyTo(
         <div className="space-y-3 sm:space-y-4">
           <div className="flex items-center gap-2 sm:gap-3 text-indigo-600">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
@@ -268,8 +363,79 @@ export default function ChatPage() {
       )
     }
     
+    if (parsed.status === 'cek_profile') {
+      const profile = parsed.profile_info
+      
+      if (!profile) {
+        return renderWithReplyTo(
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 sm:gap-3 text-amber-600">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              </div>
+              <span className="font-semibold text-gray-900 text-sm sm:text-base">Silakan login terlebih dahulu</span>
+            </div>
+          </div>
+        )
+      }
+      
+      return renderWithReplyTo(
+        <div className="space-y-3 sm:space-y-4">
+          <div className="flex items-center gap-2 sm:gap-3 text-indigo-600">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+              <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            </div>
+            <span className="font-semibold text-gray-900 text-sm sm:text-base">Profil Anda</span>
+          </div>
+          <div className="space-y-3 bg-gray-50/50 rounded-xl p-3 sm:p-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-lg sm:text-xl">
+                  {profile.full_name?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 text-sm sm:text-base">{profile.full_name}</p>
+                <p className="text-xs sm:text-sm text-gray-500">{profile.email}</p>
+              </div>
+            </div>
+            <div className="grid gap-2 text-xs sm:text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Role</span>
+                <span className={`font-medium px-2 py-0.5 rounded text-xs ${profile.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700'}`}>
+                  {profile.role === 'admin' ? 'Admin' : 'User'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Jumlah Dompet</span>
+                <span className="font-medium text-gray-900">{profile.total_wallets} dompet</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Total Saldo</span>
+                <span className="font-semibold text-indigo-600">Rp {profile.total_saldo?.toLocaleString('id-ID')}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Total Transaksi</span>
+                <span className="font-medium text-gray-900">{profile.total_transactions} transaksi</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Bergabung sejak</span>
+                <span className="font-medium text-gray-900">
+                  {new Date(profile.created_at).toLocaleDateString('id-ID', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric' 
+                  })}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    
     if (parsed.status === 'saved') {
-      return (
+      return renderWithReplyTo(
         <div className="flex items-center gap-2 sm:gap-3 text-green-600">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
             <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -280,7 +446,7 @@ export default function ChatPage() {
     }
     
     if (parsed.status === 'cancelled') {
-      return (
+      return renderWithReplyTo(
         <div className="flex items-center gap-2 sm:gap-3 text-gray-500">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
             <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -291,7 +457,7 @@ export default function ChatPage() {
     }
     
     if (parsed.status === 'error') {
-      return (
+      return renderWithReplyTo(
         <div className="flex items-start gap-2 sm:gap-3 text-red-600">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
             <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -305,7 +471,7 @@ export default function ChatPage() {
     }
     
     if (parsed.status === 'need_amount') {
-      return (
+      return renderWithReplyTo(
         <div className="space-y-3 sm:space-y-4">
           <div className="flex items-start gap-2 sm:gap-3 text-indigo-600">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
@@ -349,9 +515,9 @@ export default function ChatPage() {
     
     if (parsed.status === 'lengkap') {
       const tx = parsed.transaksi?.[0]
-      if (!tx) return parsed.pesan_balasan || ''
+      if (!tx) return renderWithReplyTo(parsed.pesan_balasan || '')
       
-      return (
+      return renderWithReplyTo(
         <div className="space-y-3 sm:space-y-4">
           <div className="flex items-center gap-2 sm:gap-3 text-green-600">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
@@ -386,7 +552,7 @@ export default function ChatPage() {
     if (parsed.status === 'kurang_data') {
       const tx = parsed.transaksi?.[0]
       
-      return (
+      return renderWithReplyTo(
         <div className="space-y-3 sm:space-y-4">
           <div className="flex items-start gap-2 sm:gap-3 text-amber-600">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
@@ -424,7 +590,7 @@ export default function ChatPage() {
     }
     
     if (parsed.status === 'ambigu') {
-      return (
+      return renderWithReplyTo(
         <div className="flex items-start gap-2 sm:gap-3 text-amber-600">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
             <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -437,7 +603,7 @@ export default function ChatPage() {
       )
     }
     
-    return (
+    return renderWithReplyTo(
       <div className="text-xs sm:text-sm text-gray-700 leading-relaxed">
         {parsed.pesan_balasan || ''}
       </div>
@@ -570,7 +736,7 @@ export default function ChatPage() {
     
     const confirmed = await confirm({
       title: "Hapus Riwayat Chat",
-      description: "Apakah Anda yakin ingin menghapus semua riwayat chat?",
+      description: "Apakah Anda yakin ingin menghapus pesan Anda dari riwayat chat?",
       confirmText: "Hapus",
       cancelText: "Batal"
     })
@@ -590,8 +756,8 @@ export default function ChatPage() {
         console.error('Error clearing chat:', error)
         toast.error('Gagal menghapus riwayat chat')
       } else {
-        setMessages([])
-        toast.success('Riwayat chat berhasil dihapus')
+        await loadChatHistory()
+        toast.success('Pesan Anda berhasil dihapus')
       }
     } catch (error) {
       console.error('Failed to clear chat:', error)
@@ -630,10 +796,18 @@ export default function ChatPage() {
     
     const combinedMessage = `${originalMessage} ${amount}`
     
+    const lastUserMessage = messages.length > 0 ? messages[messages.length - 1] : null
+    const replyTo = lastUserMessage && lastUserMessage.role === 'user' && lastUserMessage.sender_name && lastUserMessage.sender_role
+      ? { sender_name: lastUserMessage.sender_name, sender_role: lastUserMessage.sender_role }
+      : undefined
+    
     const userMsg: Message = {
       role: 'user',
       content: combinedMessage,
-      timestamp: new Date()
+      timestamp: new Date(),
+      sender_id: userId || undefined,
+      sender_name: userName,
+      sender_role: userRole
     }
     
     const userMsgId = await saveMessage('user', combinedMessage)
@@ -653,9 +827,10 @@ export default function ChatPage() {
         const errorData = { status: 'error', pesan_balasan: result.error }
         const errorMsg: Message = {
           role: 'assistant',
-          content: renderAssistantContent(errorData),
+          content: renderAssistantContent(errorData, undefined, replyTo),
           data: errorData,
           timestamp: new Date(),
+          reply_to: replyTo
         }
         const msgId = await saveMessage('assistant', result.error, errorData)
         if (msgId) errorMsg.id = msgId
@@ -667,10 +842,11 @@ export default function ChatPage() {
       
       const assistantMsg: Message = {
         role: 'assistant',
-        content: renderAssistantContent(parsed, parsed.transaksi ? 'pending' : null),
+        content: renderAssistantContent(parsed, parsed.transaksi ? 'pending' : null, replyTo),
         data: parsed,
         transaction_status: parsed.transaksi ? 'pending' : null,
-        timestamp: new Date()
+        timestamp: new Date(),
+        reply_to: replyTo
       }
       
       const msgId = await saveMessage('assistant', parsed.pesan_balasan || '', parsed)
@@ -680,9 +856,10 @@ export default function ChatPage() {
       const errorData = { status: 'error', pesan_balasan: error.message }
       const errorMsg: Message = {
         role: 'assistant',
-        content: renderAssistantContent(errorData),
+        content: renderAssistantContent(errorData, undefined, replyTo),
         data: errorData,
         timestamp: new Date(),
+        reply_to: replyTo
       }
       const msgId = await saveMessage('assistant', error.message, errorData)
       if (msgId) errorMsg.id = msgId
@@ -699,11 +876,19 @@ export default function ChatPage() {
     const userMessage = input.trim()
     setInput('')
     
+    const lastUserMessage = messages.length > 0 ? messages[messages.length - 1] : null
+    const replyTo = lastUserMessage && lastUserMessage.role === 'user' && lastUserMessage.sender_name && lastUserMessage.sender_role
+      ? { sender_name: lastUserMessage.sender_name, sender_role: lastUserMessage.sender_role }
+      : undefined
+    
     if (looksLikeTransaction(userMessage) && !containsAmount(userMessage)) {
       const userMsg: Message = {
         role: 'user',
         content: userMessage,
-        timestamp: new Date()
+        timestamp: new Date(),
+        sender_id: userId || undefined,
+        sender_name: userName,
+        sender_role: userRole
       }
       
       const userMsgId = await saveMessage('user', userMessage)
@@ -718,9 +903,10 @@ export default function ChatPage() {
       
       const assistantMsg: Message = {
         role: 'assistant',
-        content: renderAssistantContent(needAmountData),
+        content: renderAssistantContent(needAmountData, undefined, replyTo),
         data: needAmountData,
-        timestamp: new Date()
+        timestamp: new Date(),
+        reply_to: replyTo
       }
       
       const msgId = await saveMessage('assistant', needAmountData.pesan_balasan, needAmountData)
@@ -734,7 +920,10 @@ export default function ChatPage() {
     const userMsg: Message = {
       role: 'user',
       content: userMessage,
-      timestamp: new Date()
+      timestamp: new Date(),
+      sender_id: userId || undefined,
+      sender_name: userName,
+      sender_role: userRole
     }
     
     const userMsgId = await saveMessage('user', userMessage)
@@ -754,9 +943,10 @@ export default function ChatPage() {
         const errorData = { status: 'error', pesan_balasan: result.error }
         const errorMsg: Message = {
           role: 'assistant',
-          content: renderAssistantContent(errorData),
+          content: renderAssistantContent(errorData, undefined, replyTo),
           data: errorData,
           timestamp: new Date(),
+          reply_to: replyTo
         }
         const msgId = await saveMessage('assistant', result.error, errorData)
         if (msgId) errorMsg.id = msgId
@@ -768,10 +958,11 @@ export default function ChatPage() {
       
       const assistantMsg: Message = {
         role: 'assistant',
-        content: renderAssistantContent(parsed, parsed.transaksi ? 'pending' : null),
+        content: renderAssistantContent(parsed, parsed.transaksi ? 'pending' : null, replyTo),
         data: parsed,
         transaction_status: parsed.transaksi ? 'pending' : null,
-        timestamp: new Date()
+        timestamp: new Date(),
+        reply_to: replyTo
       }
       
       const msgId = await saveMessage('assistant', parsed.pesan_balasan || '', parsed)
@@ -781,9 +972,10 @@ export default function ChatPage() {
       const errorData = { status: 'error', pesan_balasan: error.message }
       const errorMsg: Message = {
         role: 'assistant',
-        content: renderAssistantContent(errorData),
+        content: renderAssistantContent(errorData, undefined, replyTo),
         data: errorData,
         timestamp: new Date(),
+        reply_to: replyTo
       }
       const msgId = await saveMessage('assistant', error.message, errorData)
       if (msgId) errorMsg.id = msgId
@@ -806,7 +998,11 @@ export default function ChatPage() {
 
   const getMessageText = (msg: Message): string => {
     if (msg.role === 'user') {
-      return msg.content as string
+      let text = msg.content as string
+      if (msg.sender_name && msg.sender_id !== userId) {
+        text = `[${msg.sender_name}${msg.sender_role === 'admin' ? ' (Admin)' : ''}]\n${text}`
+      }
+      return text
     }
     
     if (msg.transaction_status === 'accepted') {
@@ -832,6 +1028,11 @@ export default function ChatPage() {
       })
       text += `Total: Rp ${totalSaldo.toLocaleString('id-ID')}`
       return text
+    }
+    if (msg.data?.status === 'cek_profile') {
+      const profile = msg.data?.profile_info
+      if (!profile) return 'Silakan login terlebih dahulu'
+      return `Profil:\nNama: ${profile.full_name}\nEmail: ${profile.email}\nRole: ${profile.role}\nDompet: ${profile.total_wallets}\nTotal Saldo: Rp ${profile.total_saldo?.toLocaleString('id-ID')}\nTransaksi: ${profile.total_transactions}\nBergabung: ${new Date(profile.created_at).toLocaleDateString('id-ID')}`
     }
     if (msg.data?.status === 'saved') {
       return 'Transaksi berhasil disimpan!'
@@ -923,9 +1124,17 @@ export default function ChatPage() {
                     </div>
                   )}
                   <div className="flex flex-col max-w-[90%] sm:max-w-[85%] md:max-w-[75%]">
+                    {msg.role === 'user' && msg.sender_id && msg.sender_id !== userId && (
+                      <div className="flex items-center gap-1.5 mb-1 ml-auto">
+                        <span className="text-xs font-medium text-gray-600">{msg.sender_name}</span>
+                        {msg.sender_role === 'admin' && (
+                          <Badge variant="default" className="text-[9px] h-4 px-1">Admin</Badge>
+                        )}
+                      </div>
+                    )}
                     <Card className={`shadow-subtle border-0 ${
                       msg.role === 'user' 
-                        ? 'bg-indigo-600 text-white rounded-2xl rounded-br-md' 
+                        ? `${getUserColor(msg.sender_id || '', userId || '')} text-white rounded-2xl rounded-br-md` 
                         : msg.transaction_status === 'accepted'
                         ? 'bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl rounded-bl-md'
                         : msg.transaction_status === 'rejected'
@@ -1074,7 +1283,7 @@ export default function ChatPage() {
                 className="h-8 px-3 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200 text-xs gap-1.5"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                Hapus Riwayat
+                Hapus Pesan Saya
               </Button>
             )}
           </div>

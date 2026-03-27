@@ -16,10 +16,7 @@ import {
   TrendingDown,
   User,
   ArrowUpRight,
-  ArrowDownLeft,
   BarChart3,
-  X,
-  Sparkles,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
@@ -34,13 +31,13 @@ interface WalletItem {
 }
 
 const menuItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: MessageSquare },
-  { href: '/dashboard/transactions', label: 'Riwayat Transaksi', icon: History },
-  { href: '/dashboard/income', label: 'Pemasukan', icon: TrendingUp },
-  { href: '/dashboard/expense', label: 'Pengeluaran', icon: TrendingDown },
-  { href: '/dashboard/transfer', label: 'Transfer', icon: ArrowUpRight },
-  { href: '/dashboard/reports', label: 'Laporan', icon: BarChart3 },
-  { href: '/dashboard/settings', label: 'Pengaturan', icon: Settings },
+  { href: '/dashboard', label: 'Dashboard', icon: MessageSquare, adminOnly: false },
+  { href: '/dashboard/transactions', label: 'Riwayat Transaksi', icon: History, adminOnly: false },
+  { href: '/dashboard/income', label: 'Pemasukan', icon: TrendingUp, adminOnly: false },
+  { href: '/dashboard/expense', label: 'Pengeluaran', icon: TrendingDown, adminOnly: false },
+  { href: '/dashboard/transfer', label: 'Transfer', icon: ArrowUpRight, adminOnly: true },
+  { href: '/dashboard/reports', label: 'Laporan', icon: BarChart3, adminOnly: false },
+  { href: '/dashboard/settings', label: 'Pengaturan', icon: Settings, adminOnly: true },
 ]
 
 export default function DashboardLayout({
@@ -52,6 +49,7 @@ export default function DashboardLayout({
   const pathname = usePathname()
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
+  const [userRole, setUserRole] = useState<'admin' | 'user'>('user')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [wallets, setWallets] = useState<WalletItem[]>([])
   const [walletsLoading, setWalletsLoading] = useState(true)
@@ -71,6 +69,19 @@ export default function DashboardLayout({
         return
       }
       setUser(session.user)
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+      
+      const role = profile?.role
+      if (role === 'admin' || role === 'user') {
+        setUserRole(role)
+      } else {
+        setUserRole('user')
+      }
     } catch (error) {
       console.error('Auth error:', error)
       router.push('/login')
@@ -131,25 +142,27 @@ export default function DashboardLayout({
       
       <ScrollArea className="flex-1 px-3 py-3">
         <nav className="space-y-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => mobile && setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
-                  isActive
-                    ? 'bg-indigo-50 text-indigo-600 shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-              >
-                <Icon className={`h-5 w-5 ${isActive ? 'text-indigo-500' : 'text-gray-400'}`} />
-                <span className="font-medium text-sm">{item.label}</span>
-              </Link>
-            )
-          })}
+          {menuItems
+            .filter((item) => !item.adminOnly || userRole === 'admin')
+            .map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => mobile && setMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                    isActive
+                      ? 'bg-indigo-50 text-indigo-600 shadow-sm'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <Icon className={`h-5 w-5 ${isActive ? 'text-indigo-500' : 'text-gray-400'}`} />
+                  <span className="font-medium text-sm">{item.label}</span>
+                </Link>
+              )
+            })}
         </nav>
 
         <div className="mt-6 sm:mt-8">
@@ -197,9 +210,16 @@ export default function DashboardLayout({
             <User className="h-4 w-4 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
-              {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+              </p>
+              {userRole === 'admin' && (
+                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-indigo-100 text-indigo-700 rounded">
+                  Admin
+                </span>
+              )}
+            </div>
             <p className="text-xs text-gray-500 truncate">{user?.email}</p>
           </div>
         </div>

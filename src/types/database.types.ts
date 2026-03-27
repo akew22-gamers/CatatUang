@@ -55,6 +55,101 @@ export type Database = {
           },
         ]
       }
+      allowed_emails: {
+        Row: {
+          added_by: string | null
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          is_registered: boolean | null
+          registered_at: string | null
+          role: string | null
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id?: string
+          is_registered?: boolean | null
+          registered_at?: string | null
+          role?: string | null
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          is_registered?: boolean | null
+          registered_at?: string | null
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allowed_emails_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          data: Json | null
+          group_id: number
+          id: number
+          role: string
+          sender_name: string | null
+          sender_role: string | null
+          transaction_status: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          data?: Json | null
+          group_id: number
+          id?: never
+          role: string
+          sender_name?: string | null
+          sender_role?: string | null
+          transaction_status?: string | null
+          user_id?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          data?: Json | null
+          group_id?: number
+          id?: never
+          role?: string
+          sender_name?: string | null
+          sender_role?: string | null
+          transaction_status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string
@@ -123,6 +218,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          role: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -130,6 +226,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          role?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -137,6 +234,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          role?: string | null
         }
         Relationships: []
       }
@@ -347,6 +445,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      check_email_whitelist: { Args: { event: Json }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
