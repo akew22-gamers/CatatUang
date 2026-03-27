@@ -5,7 +5,6 @@ import { Send, Sparkles, TrendingUp, TrendingDown, Wallet, CheckCircle2, XCircle
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { createClient } from '@/lib/supabase/client'
@@ -23,19 +22,11 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false)
   const [wallets, setWallets] = useState<string[]>(['Cash', 'BCA', 'GoPay'])
   const [walletsLoaded, setWalletsLoaded] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadWallets()
   }, [])
-  
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
 
   const loadWallets = async () => {
     const supabase = createClient()
@@ -311,150 +302,154 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-[100dvh] sm:h-screen bg-gradient-to-br from-gray-50 to-gray-100/50">
-      <ScrollArea className="flex-1">
-        <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-3xl mx-auto">
-          {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] sm:min-h-[70vh] text-center space-y-4 sm:space-y-6 px-4">
-              <div className="space-y-2">
-                <p className="text-lg sm:text-xl font-medium text-gray-700">
-                  Halo! 👋
-                </p>
-                <p className="text-gray-500 text-sm sm:text-base">
-                  Ketik transaksi kamu di bawah untuk mulai mencatat
-                </p>
-              </div>
-              
-              <Card className="w-full max-w-sm sm:max-w-md border-gray-100 shadow-subtle bg-white/80 backdrop-blur">
-                <CardContent className="pt-4 sm:pt-6 space-y-4 sm:space-y-6">
-                  <div className="space-y-2 sm:space-y-3">
-                    <p className="text-xs sm:text-sm font-semibold text-gray-700 flex items-center gap-2">
-                      <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-500" />
-                      Contoh penggunaan:
-                    </p>
-                    <div className="space-y-2 sm:space-y-3">
-                      <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 hover:shadow-sm transition-all duration-200 cursor-pointer group">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                          <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
-                        </div>
-                        <div className="flex-1 text-left">
-                          <span className="text-gray-600 text-xs sm:text-sm">Gaji masuk 15 juta ke BCA</span>
-                          <Badge className="ml-2 bg-green-100 text-green-700 hover:bg-green-100 border-0 text-xs">Pemasukan</Badge>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-gradient-to-r from-red-50 to-rose-50 border border-red-100 hover:shadow-sm transition-all duration-200 cursor-pointer group">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                          <TrendingDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600" />
-                        </div>
-                        <div className="flex-1 text-left">
-                          <span className="text-gray-600 text-xs sm:text-sm">Beli makan siang 50rb pakai gopay</span>
-                          <Badge className="ml-2 bg-red-100 text-red-700 hover:bg-red-100 border-0 text-xs">Pengeluaran</Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-          
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
-              style={{ animationDelay: `${i * 50}ms` }}
-            >
-              {msg.role === 'assistant' && (
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mr-2 sm:mr-3 mt-1 flex-shrink-0 shadow-md">
-                  <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen bg-gradient-to-br from-gray-50 to-gray-100/50">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto"
+      >
+        <div className="flex flex-col justify-end min-h-full p-3 sm:p-4 md:p-6 max-w-3xl mx-auto">
+          <div className="space-y-4 sm:space-y-6">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center space-y-4 sm:space-y-6 px-4 py-8">
+                <div className="space-y-2">
+                  <p className="text-lg sm:text-xl font-medium text-gray-700">
+                    Halo! 👋
+                  </p>
+                  <p className="text-gray-500 text-sm sm:text-base">
+                    Ketik transaksi kamu di bawah untuk mulai mencatat
+                  </p>
                 </div>
-              )}
-              <Card className={`max-w-[90%] sm:max-w-[85%] md:max-w-[75%] shadow-subtle border-0 ${
-                msg.role === 'user' 
-                  ? 'bg-indigo-600 text-white rounded-2xl rounded-br-md' 
-                  : 'bg-white rounded-2xl rounded-bl-md'
-              }`}>
-                <CardContent className={`p-3 sm:p-4 ${msg.role === 'user' ? 'pb-1 sm:pb-2' : ''}`}>
-                  {msg.role === 'user' ? (
-                    <p className="leading-relaxed text-sm sm:text-base">{msg.content as string}</p>
-                  ) : (
-                    <div className="space-y-3 sm:space-y-4">
-                      {msg.content}
-                      
-                      {msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && (
-                        <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t border-gray-100">
-                          <p className="text-xs font-semibold text-gray-500 flex items-center gap-2">
-                            <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                            Pilih dompet:
-                          </p>
-                          <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                            {walletsLoaded ? (
-                              wallets.map((wallet) => (
-                                <Button
-                                  key={wallet}
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleWalletSelect(wallet, i)}
-                                  className="text-xs h-8 sm:h-9 rounded-lg border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200"
-                                >
-                                  {wallet}
-                                </Button>
-                              ))
-                            ) : (
-                              <div className="flex gap-1.5 sm:gap-2">
-                                <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
-                                <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
-                                <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
-                              </div>
-                            )}
+                
+                <Card className="w-full max-w-sm sm:max-w-md border-gray-100 shadow-subtle bg-white/80 backdrop-blur">
+                  <CardContent className="pt-4 sm:pt-6 space-y-4 sm:space-y-6">
+                    <div className="space-y-2 sm:space-y-3">
+                      <p className="text-xs sm:text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-500" />
+                        Contoh penggunaan:
+                      </p>
+                      <div className="space-y-2 sm:space-y-3">
+                        <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 hover:shadow-sm transition-all duration-200 cursor-pointer group">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                            <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
+                          </div>
+                          <div className="flex-1 text-left">
+                            <span className="text-gray-600 text-xs sm:text-sm">Gaji masuk 15 juta ke BCA</span>
+                            <Badge className="ml-2 bg-green-100 text-green-700 hover:bg-green-100 border-0 text-xs">Pemasukan</Badge>
                           </div>
                         </div>
-                      )}
-                      
-                      {msg.data?.status === 'lengkap' && msg.data?.transaksi?.[0]?.dompet && (
-                        <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-100">
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleSave(msg.data, i)}
-                            disabled={loading}
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl h-9 sm:h-10 transition-all duration-200 text-xs sm:text-sm"
-                          >
-                            {loading ? (
-                              <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 animate-spin" />
-                            ) : (
-                              <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                            )}
-                            {loading ? 'Menyimpan...' : 'Simpan'}
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleCancel(i)}
-                            disabled={loading}
-                            className="flex-1 border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 rounded-xl h-9 sm:h-10 transition-all duration-200 text-xs sm:text-sm"
-                          >
-                            <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                            Batal
-                          </Button>
+                        <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-gradient-to-r from-red-50 to-rose-50 border border-red-100 hover:shadow-sm transition-all duration-200 cursor-pointer group">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                            <TrendingDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600" />
+                          </div>
+                          <div className="flex-1 text-left">
+                            <span className="text-gray-600 text-xs sm:text-sm">Beli makan siang 50rb pakai gopay</span>
+                            <Badge className="ml-2 bg-red-100 text-red-700 hover:bg-red-100 border-0 text-xs">Pengeluaran</Badge>
+                          </div>
                         </div>
-                      )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
+                  style={{ animationDelay: `${i * 50}ms` }}
+                >
+                  {msg.role === 'assistant' && (
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mr-2 sm:mr-3 mt-1 flex-shrink-0 shadow-md">
+                      <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
                     </div>
                   )}
-                  
-                  <div className={`text-[10px] sm:text-xs mt-2 sm:mt-3 ${msg.role === 'user' ? 'text-white/70 text-right' : 'text-gray-400'}`}>
-                    {msg.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
+                  <Card className={`max-w-[90%] sm:max-w-[85%] md:max-w-[75%] shadow-subtle border-0 ${
+                    msg.role === 'user' 
+                      ? 'bg-indigo-600 text-white rounded-2xl rounded-br-md' 
+                      : 'bg-white rounded-2xl rounded-bl-md'
+                  }`}>
+                    <CardContent className={`p-3 sm:p-4 ${msg.role === 'user' ? 'pb-1 sm:pb-2' : ''}`}>
+                      {msg.role === 'user' ? (
+                        <p className="leading-relaxed text-sm sm:text-base">{msg.content as string}</p>
+                      ) : (
+                        <div className="space-y-3 sm:space-y-4">
+                          {msg.content}
+                          
+                          {msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && (
+                            <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t border-gray-100">
+                              <p className="text-xs font-semibold text-gray-500 flex items-center gap-2">
+                                <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                Pilih dompet:
+                              </p>
+                              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                {walletsLoaded ? (
+                                  wallets.map((wallet) => (
+                                    <Button
+                                      key={wallet}
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleWalletSelect(wallet, i)}
+                                      className="text-xs h-8 sm:h-9 rounded-lg border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200"
+                                    >
+                                      {wallet}
+                                    </Button>
+                                  ))
+                                ) : (
+                                  <div className="flex gap-1.5 sm:gap-2">
+                                    <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
+                                    <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
+                                    <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {msg.data?.status === 'lengkap' && msg.data?.transaksi?.[0]?.dompet && (
+                            <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-100">
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleSave(msg.data, i)}
+                                disabled={loading}
+                                className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl h-9 sm:h-10 transition-all duration-200 text-xs sm:text-sm"
+                              >
+                                {loading ? (
+                                  <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                                )}
+                                {loading ? 'Menyimpan...' : 'Simpan'}
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleCancel(i)}
+                                disabled={loading}
+                                className="flex-1 border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 rounded-xl h-9 sm:h-10 transition-all duration-200 text-xs sm:text-sm"
+                              >
+                                <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                                Batal
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className={`text-[10px] sm:text-xs mt-2 sm:mt-3 ${msg.role === 'user' ? 'text-white/70 text-right' : 'text-gray-400'}`}>
+                        {msg.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-      </ScrollArea>
+      </div>
 
-      <div className="border-t border-gray-100 bg-white/80 backdrop-blur p-3 sm:p-4 md:p-6 safe-area-bottom">
+      <div className="flex-shrink-0 border-t border-gray-100 bg-white p-3 sm:p-4 md:p-6 safe-area-bottom">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className="relative flex gap-2 sm:gap-3 items-end bg-white rounded-2xl border border-gray-200 shadow-subtle hover:shadow-elevated transition-shadow duration-200 p-2">
+          <div className="flex gap-2 sm:gap-3 items-end bg-white rounded-2xl border border-gray-200 shadow-subtle p-2">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -482,9 +477,6 @@ export default function ChatPage() {
               )}
             </Button>
           </div>
-          <p className="text-[10px] sm:text-xs text-gray-400 text-center mt-2 sm:mt-3">
-            Tekan Enter untuk mengirim, Shift + Enter untuk baris baru
-          </p>
         </form>
       </div>
     </div>
