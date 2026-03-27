@@ -27,13 +27,10 @@ export default function TransactionsPage() {
 
   async function loadTransactions() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
       let query = supabase
         .from('transactions')
         .select('*')
-        .eq('created_by', user.id)
+        .eq('group_id', 1)
         .order('transaction_date', { ascending: false })
 
       if (filter !== 'all') {

@@ -25,13 +25,13 @@ export default function IncomePage() {
     dompet: '',
     keterangan: '',
   })
+  const supabase = createClient()
 
   useEffect(() => {
     loadWallets()
   }, [])
 
   const loadWallets = async () => {
-    const supabase = createClient()
     try {
       const { data, error } = await supabase
         .from('wallets')
@@ -68,7 +68,6 @@ export default function IncomePage() {
     }
 
     setLoading(true)
-    const supabase = createClient()
     
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -77,30 +76,37 @@ export default function IncomePage() {
         return
       }
 
+      const selectedWallet = wallets.find(w => w.id === parseInt(formData.dompet))
+      if (!selectedWallet) {
+        toast.error('Dompet tidak ditemukan')
+        return
+      }
+
       const { error: txError } = await supabase
         .from('transactions')
         .insert({
           group_id: 1,
-          user_id: user.id,
+          created_by: user.id,
           type: 'income',
           amount: nominal,
           description: formData.keterangan || 'Pemasukan manual',
-          wallet_id: parseInt(formData.dompet),
-          created_at: new Date().toISOString(),
+          wallet_id: selectedWallet.id,
+          wallet_name: selectedWallet.name,
+          transaction_date: new Date().toISOString(),
         })
 
       if (txError) throw txError
 
-      const selectedWallet = wallets.find(w => w.id === parseInt(formData.dompet))
-      if (selectedWallet) {
-        const { error: walletError } = await supabase
-          .from('wallets')
-          .update({ saldo: selectedWallet.saldo + nominal })
-          .eq('id', selectedWallet.id)
+      const currentSaldo = Number(selectedWallet.saldo) || 0
+      const newSaldo = currentSaldo + nominal
+      
+      const { error: walletError } = await supabase
+        .from('wallets')
+        .update({ saldo: newSaldo })
+        .eq('id', selectedWallet.id)
 
-        if (walletError) {
-          console.error('Error updating wallet saldo:', walletError)
-        }
+      if (walletError) {
+        throw new Error('Gagal update saldo dompet: ' + walletError.message)
       }
 
       toast.success('Pemasukan berhasil disimpan!')

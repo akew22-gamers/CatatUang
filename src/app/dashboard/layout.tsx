@@ -12,7 +12,6 @@ import {
   LogOut,
   Menu,
   Wallet,
-  CreditCard,
   TrendingUp,
   TrendingDown,
   User,
@@ -21,11 +20,12 @@ import {
   BarChart3,
   X,
   Sparkles,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
-import { Card, CardContent } from '@/components/ui/card'
 
 interface WalletItem {
   id: number
@@ -55,6 +55,7 @@ export default function DashboardLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [wallets, setWallets] = useState<WalletItem[]>([])
   const [walletsLoading, setWalletsLoading] = useState(true)
+  const [walletsCollapsed, setWalletsCollapsed] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -152,37 +153,41 @@ export default function DashboardLayout({
         </nav>
 
         <div className="mt-6 sm:mt-8">
-          <div className="px-3 mb-3">
+          <button
+            onClick={() => setWalletsCollapsed(!walletsCollapsed)}
+            className="w-full px-3 mb-3 flex items-center justify-between group"
+          >
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
               Saldo Dompet
             </h3>
-          </div>
-          <div className="space-y-2">
-            {walletsLoading ? (
-              <div className="px-3 space-y-2">
-                <div className="h-14 sm:h-16 bg-gray-100 rounded-xl animate-pulse" />
-                <div className="h-14 sm:h-16 bg-gray-100 rounded-xl animate-pulse" />
-              </div>
+            {walletsCollapsed ? (
+              <ChevronDown className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
             ) : (
-              wallets.map((wallet) => (
-                <Card key={wallet.id} className="border-gray-100 shadow-subtle hover:shadow-elevated transition-shadow duration-200">
-                  <CardContent className="p-2.5 sm:p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0">
-                        <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{wallet.name}</p>
-                        <p className="text-xs sm:text-sm text-gray-500">
-                          Rp {wallet.saldo?.toLocaleString('id-ID') || '0'}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+              <ChevronUp className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
             )}
-          </div>
+          </button>
+          {!walletsCollapsed && (
+            <div className="space-y-1">
+              {walletsLoading ? (
+                <div className="px-3 space-y-2">
+                  <div className="h-8 bg-gray-100 rounded-lg animate-pulse" />
+                  <div className="h-8 bg-gray-100 rounded-lg animate-pulse" />
+                </div>
+              ) : (
+                wallets.map((wallet) => (
+                  <div 
+                    key={wallet.id} 
+                    className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <span className="text-xs text-gray-600 truncate">{wallet.name}</span>
+                    <span className="text-xs font-medium text-gray-900">
+                      Rp {wallet.saldo?.toLocaleString('id-ID') || '0'}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </ScrollArea>
 

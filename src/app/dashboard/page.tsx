@@ -1061,18 +1061,24 @@ export default function ChatPage() {
 
       <div className="flex-shrink-0 border-t border-gray-100 bg-white p-3 sm:p-4 md:p-6 safe-area-bottom">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className="flex gap-2 sm:gap-3 items-end bg-white rounded-2xl border border-gray-200 shadow-subtle p-2">
+          <div className="flex justify-between items-center mb-2">
+            <div className="text-xs text-gray-400">
+              {messages.length > 0 && `${messages.length} pesan`}
+            </div>
             {messages.length > 0 && (
               <Button 
                 type="button"
-                size="icon"
+                size="sm"
                 variant="ghost"
                 onClick={clearChatHistory}
-                className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200 flex-shrink-0"
+                className="h-8 px-3 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200 text-xs gap-1.5"
               >
-                <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                <Trash2 className="h-3.5 w-3.5" />
+                Hapus Riwayat
               </Button>
             )}
+          </div>
+          <div className="flex gap-2 sm:gap-3 items-end bg-white rounded-2xl border border-gray-200 shadow-subtle p-2">
             <Textarea
               ref={textareaRef}
               value={input}
