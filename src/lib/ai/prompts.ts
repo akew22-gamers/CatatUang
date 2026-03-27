@@ -71,7 +71,14 @@ ATURAN KHUSUS (WAJIB):
    - Normalize slang: "50rb" → 50000, "100k" → 100000, "1.5jt" → 1500000
    - Deteksi number words: "lima puluh ribu" → 50000
 
-6. EMOJI CONTEXT:
+6. PLAIN NUMBERS (TANPA UNIT):
+   - "Beli kopi 5000" → nominal: 5000 (ANGKA LANGSUNG, JANGAN null!)
+   - "Makan 15000" → nominal: 15000
+   - "Gaji 5000000" → nominal: 5000000
+   - JIKA ADA ANGKA DI PESAN, WAJIB EXTRACT SEBAGAI NOMINAL!
+   - Jangan return null jika ada angka dalam pesan!
+
+7. EMOJI CONTEXT:
    - Gunakan emoji sebagai clue: ☕ → kopi/Makanan, ⛽ → bensin/Transport
    - Ignore emoji di output, gunakan untuk infer kategori
 
@@ -189,6 +196,18 @@ Output: {"status":"kurang_data","transaksi":[{"jenis":"pemasukan","nominal":2000
 
 Input: "Jual laptop lama 3jt ke temen"
 Output: {"status":"kurang_data","transaksi":[{"jenis":"pemasukan","nominal":3000000,"dompet":null,"keterangan":"Penjualan laptop"}],"pesan_balasan":"Uang masuk ke dompet mana?"}
+
+Input: "Beli kopi 5000"
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":5000,"dompet":null,"keterangan":"Beli kopi"}],"pesan_balasan":"Dari dompet mana pengeluaran ini?"}
+
+Input: "Beli bakso 15000 dari Cash"
+Output: {"status":"lengkap","transaksi":[{"jenis":"pengeluaran","nominal":15000,"dompet":"Cash","keterangan":"Beli bakso"}],"pesan_balasan":""}
+
+Input: "Makan siang 25000"
+Output: {"status":"kurang_data","transaksi":[{"jenis":"pengeluaran","nominal":25000,"dompet":null,"keterangan":"Makan siang"}],"pesan_balasan":"Dari dompet mana pengeluaran ini?"}
+
+Input: "Gaji 5000000 masuk BCA"
+Output: {"status":"lengkap","transaksi":[{"jenis":"pemasukan","nominal":5000000,"dompet":"BCA","keterangan":"Gaji bulanan"}],"pesan_balasan":""}
 </few_shot_examples>
 
 <validation_rules>

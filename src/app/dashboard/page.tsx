@@ -486,7 +486,8 @@ export default function ChatPage() {
 
   const containsAmount = (text: string): boolean => {
     const amountPatterns = [
-      /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?/,
+      /\d{2,}/,
+      /\d{1,3}(?:[.,]\d{3})+/,
       /\d+(?:rb|ribu|juta|jt|k)/i,
       /\d+\s*(?:rb|ribu|juta|jt|k)/i,
     ]
