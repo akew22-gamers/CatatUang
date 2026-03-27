@@ -35,12 +35,12 @@ interface WalletItem {
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: MessageSquare },
-  { href: '/transactions', label: 'Riwayat Transaksi', icon: History },
-  { href: '/income', label: 'Pemasukan', icon: TrendingUp },
-  { href: '/expense', label: 'Pengeluaran', icon: TrendingDown },
-  { href: '/transfer', label: 'Transfer', icon: ArrowUpRight },
-  { href: '/reports', label: 'Laporan', icon: BarChart3 },
-  { href: '/settings', label: 'Pengaturan', icon: Settings },
+  { href: '/dashboard/transactions', label: 'Riwayat Transaksi', icon: History },
+  { href: '/dashboard/income', label: 'Pemasukan', icon: TrendingUp },
+  { href: '/dashboard/expense', label: 'Pengeluaran', icon: TrendingDown },
+  { href: '/dashboard/transfer', label: 'Transfer', icon: ArrowUpRight },
+  { href: '/dashboard/reports', label: 'Laporan', icon: BarChart3 },
+  { href: '/dashboard/settings', label: 'Pengaturan', icon: Settings },
 ]
 
 export default function DashboardLayout({
