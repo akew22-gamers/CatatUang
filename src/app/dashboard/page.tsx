@@ -315,19 +315,14 @@ export default function ChatPage() {
       <ScrollArea className="flex-1">
         <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-3xl mx-auto">
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] sm:min-h-[70vh] text-center space-y-6 sm:space-y-8 px-4">
-              <div className="space-y-3 sm:space-y-4">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl shadow-indigo-200 mx-auto">
-                  <Sparkles className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
-                </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    CatatUang AI Assistant
-                  </h2>
-                  <p className="text-gray-500 text-base sm:text-lg">
-                    Catat transaksi keuangan dengan bahasa natural
-                  </p>
-                </div>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] sm:min-h-[70vh] text-center space-y-4 sm:space-y-6 px-4">
+              <div className="space-y-2">
+                <p className="text-lg sm:text-xl font-medium text-gray-700">
+                  Halo! 👋
+                </p>
+                <p className="text-gray-500 text-sm sm:text-base">
+                  Ketik transaksi kamu di bawah untuk mulai mencatat
+                </p>
               </div>
               
               <Card className="w-full max-w-sm sm:max-w-md border-gray-100 shadow-subtle bg-white/80 backdrop-blur">

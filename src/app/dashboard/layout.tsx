@@ -20,6 +20,7 @@ import {
   ArrowDownLeft,
   BarChart3,
   X,
+  Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -216,23 +217,40 @@ export default function DashboardLayout({
         <SidebarContent />
       </aside>
 
-      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden fixed top-safe left-4 z-50 w-11 h-11 rounded-xl bg-white/90 backdrop-blur shadow-elevated hover:shadow-lg transition-all duration-200"
-          >
-            <Menu className="h-5 w-5 text-gray-600" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-[280px] border-r border-gray-100">
-          <SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
-          <SidebarContent mobile />
-        </SheetContent>
-      </Sheet>
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-100 h-14 safe-area-top">
+        <div className="flex items-center justify-between h-full px-4">
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-10 h-10 rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                <Menu className="h-5 w-5 text-gray-600" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-[280px] border-r border-gray-100">
+              <SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
+              <SidebarContent mobile />
+            </SheetContent>
+          </Sheet>
 
-      <main className="flex-1 min-w-0">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-200">
+              <Wallet className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              CatatUang
+            </span>
+          </Link>
+
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+            <User className="h-4 w-4 text-white" />
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 min-w-0 pt-14 md:pt-0">
         {children}
       </main>
     </div>

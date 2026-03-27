@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ArrowRightLeft, ArrowRight } from 'lucide-react'
+import { ArrowRightLeft, ArrowDown, Wallet } from 'lucide-react'
 
 export default function TransferPage() {
   const [loading, setLoading] = useState(false)
@@ -30,83 +30,92 @@ export default function TransferPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Transfer</h1>
-        <p className="text-muted-foreground mt-1">
-          Pindahkan saldo antar dompet
-        </p>
+    <div className="p-4 sm:p-6 space-y-6 max-w-2xl mx-auto">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-200 flex-shrink-0">
+          <ArrowRightLeft className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Transfer</h1>
+          <p className="text-sm sm:text-base text-gray-500 mt-0.5">
+            Pindahkan saldo antar dompet
+          </p>
+        </div>
       </div>
 
-      <Card className="max-w-md">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <ArrowRightLeft className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <CardTitle>Form Transfer</CardTitle>
-              <CardDescription>Transfer saldo antar dompet</CardDescription>
-            </div>
-          </div>
+      <Card className="rounded-2xl border-gray-100 shadow-subtle">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-semibold text-gray-900">Form Transfer</CardTitle>
+          <CardDescription>Transfer saldo antar dompet</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="dariDompet">Dari Dompet</Label>
+              <Label htmlFor="dariDompet" className="text-sm font-medium text-gray-700">Dari Dompet</Label>
               <Select value={formData.dariDompet} onValueChange={(v) => setFormData({ ...formData, dariDompet: v })}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11 sm:h-12 rounded-xl border-gray-200">
                   <SelectValue placeholder="Pilih dompet asal" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">💳 Cash</SelectItem>
-                  <SelectItem value="bca">💳 BCA</SelectItem>
-                  <SelectItem value="gopay">💳 GoPay</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="bca">BCA</SelectItem>
+                  <SelectItem value="gopay">GoPay</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="flex justify-center">
-              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+            <div className="flex justify-center py-2">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                <ArrowDown className="h-5 w-5 text-blue-600" />
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="keDompet">Ke Dompet</Label>
+              <Label htmlFor="keDompet" className="text-sm font-medium text-gray-700">Ke Dompet</Label>
               <Select value={formData.keDompet} onValueChange={(v) => setFormData({ ...formData, keDompet: v })}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11 sm:h-12 rounded-xl border-gray-200">
                   <SelectValue placeholder="Pilih dompet tujuan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">💳 Cash</SelectItem>
-                  <SelectItem value="bca">💳 BCA</SelectItem>
-                  <SelectItem value="gopay">💳 GoPay</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="bca">BCA</SelectItem>
+                  <SelectItem value="gopay">GoPay</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="nominal">Nominal</Label>
-              <Input
-                id="nominal"
-                type="number"
-                placeholder="Contoh: 100000"
-                value={formData.nominal}
-                onChange={(e) => setFormData({ ...formData, nominal: e.target.value })}
-              />
+              <Label htmlFor="nominal" className="text-sm font-medium text-gray-700">Nominal</Label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rp</span>
+                <Input
+                  id="nominal"
+                  type="number"
+                  placeholder="100.000"
+                  value={formData.nominal}
+                  onChange={(e) => setFormData({ ...formData, nominal: e.target.value })}
+                  className="h-11 sm:h-12 pl-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="keterangan">Keterangan (Opsional)</Label>
+              <Label htmlFor="keterangan" className="text-sm font-medium text-gray-700">Keterangan <span className="text-gray-400 font-normal">(opsional)</span></Label>
               <Input
                 id="keterangan"
                 placeholder="Contoh: Tarik tunai"
                 value={formData.keterangan}
                 onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
+                className="h-11 sm:h-12 rounded-xl border-gray-200"
               />
             </div>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
-              <ArrowRightLeft className="h-4 w-4 mr-2" />
+            <Button 
+              type="submit" 
+              className="w-full h-11 sm:h-12 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium shadow-lg shadow-blue-200 transition-all duration-200" 
+              disabled={loading}
+            >
+              <ArrowRightLeft className="h-5 w-5 mr-2" />
               {loading ? 'Memproses...' : 'Transfer'}
             </Button>
           </form>
