@@ -70,7 +70,7 @@ export function generateSummaryPDF(data: SummaryReportData): void {
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(12)
-  doc.setTextColor(80, 80, 80)
+  doc.setTextColor(0, 0, 0)
   doc.text(`Periode: ${formatDate(data.startDate)} - ${formatDate(data.endDate)}`, PAGE_WIDTH / 2, MARGIN + 17, { align: 'center' })
 
   if (data.walletName) {
@@ -78,10 +78,10 @@ export function generateSummaryPDF(data: SummaryReportData): void {
   }
 
   const tableData = [
-    ['Total Pemasukan', formatCurrency(data.totalIncome)],
-    ['Total Pengeluaran', formatCurrency(data.totalExpense)],
-    ['Selisih', formatCurrency(data.selisih)],
-    ['Saldo Saat Ini', formatCurrency(data.totalSaldo)]
+    ['Total Pemasukan', formatNumber(data.totalIncome)],
+    ['Total Pengeluaran', formatNumber(data.totalExpense)],
+    ['Selisih', formatNumber(data.selisih)],
+    ['Saldo Saat Ini', formatNumber(data.totalSaldo)]
   ]
 
   const colWidth = USABLE_WIDTH / 2
@@ -96,18 +96,21 @@ export function generateSummaryPDF(data: SummaryReportData): void {
     headStyles: {
       font: 'helvetica',
       fontStyle: 'bold',
-      fillColor: [240, 240, 240],
+      fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
       fontSize: 12,
       halign: 'center',
-      cellPadding: 3
+      cellPadding: 3,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.5
     },
     styles: {
       font: 'helvetica',
       fontSize: 12,
       cellPadding: 3,
-      lineColor: [200, 200, 200],
-      lineWidth: 0.1
+      lineColor: [0, 0, 0],
+      lineWidth: 0.5,
+      textColor: [0, 0, 0]
     },
     columnStyles: {
       0: { cellWidth: colWidth },
@@ -118,7 +121,7 @@ export function generateSummaryPDF(data: SummaryReportData): void {
   const pageCount = doc.getNumberOfPages()
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
-  doc.setTextColor(128, 128, 128)
+  doc.setTextColor(0, 0, 0)
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i)
     doc.text(
@@ -173,7 +176,7 @@ export function generateActivityPDF(data: ActivityReportData): void {
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(12)
-  doc.setTextColor(80, 80, 80)
+  doc.setTextColor(0, 0, 0)
   doc.text(`Periode: ${formatDate(data.startDate)} - ${formatDate(data.endDate)}`, PAGE_WIDTH / 2, MARGIN + 17, { align: 'center' })
 
   if (data.walletName) {
@@ -205,27 +208,30 @@ export function generateActivityPDF(data: ActivityReportData): void {
     headStyles: {
       font: 'helvetica',
       fontStyle: 'bold',
-      fillColor: [240, 240, 240],
+      fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
       fontSize: 10,
       halign: 'center',
-      cellPadding: 2
+      cellPadding: 2,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.5
     },
     styles: {
       font: 'helvetica',
       fontSize: 9,
       cellPadding: 2,
-      lineColor: [200, 200, 200],
-      lineWidth: 0.1
+      lineColor: [0, 0, 0],
+      lineWidth: 0.5,
+      textColor: [0, 0, 0]
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 12 },
-      1: { halign: 'center', cellWidth: 22 },
-      2: { cellWidth: 30 },
-      3: { cellWidth: 55, overflow: 'linebreak' },
-      4: { halign: 'right', cellWidth: 28 },
-      5: { halign: 'right', cellWidth: 28 },
-      6: { halign: 'right', cellWidth: 28 }
+      0: { halign: 'center', cellWidth: 10 },
+      1: { halign: 'center', cellWidth: 18 },
+      2: { cellWidth: 25 },
+      3: { cellWidth: 45, overflow: 'linebreak' },
+      4: { halign: 'right', cellWidth: 25 },
+      5: { halign: 'right', cellWidth: 25 },
+      6: { halign: 'right', cellWidth: 32 }
     }
   })
 
@@ -238,7 +244,7 @@ export function generateActivityPDF(data: ActivityReportData): void {
   const pageCount = doc.getNumberOfPages()
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
-  doc.setTextColor(128, 128, 128)
+  doc.setTextColor(0, 0, 0)
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i)
     doc.text(
