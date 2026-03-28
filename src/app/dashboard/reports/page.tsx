@@ -143,7 +143,9 @@ export default function ReportsPage() {
   }
 
   function prepareActivityData(): ActivityReportData {
-    let runningBalance = 0
+    const initialBalance = stats.totalSaldo - stats.selisih
+    let runningBalance = initialBalance
+    
     const rows: ActivityReportRow[] = transactions.map((t, index) => {
       if (t.type === 'income') {
         runningBalance += t.amount
@@ -172,7 +174,7 @@ export default function ReportsPage() {
       startDate,
       endDate,
       walletName,
-      initialBalance: 0,
+      initialBalance,
       finalBalance: runningBalance
     }
   }
@@ -508,7 +510,8 @@ export default function ReportsPage() {
                     </thead>
                     <tbody>
                       {(() => {
-                        let runningBalance = 0
+                        const initialBalance = stats.totalSaldo - stats.selisih
+                        let runningBalance = initialBalance
                         return transactions.slice(0, 10).map((t, index) => {
                           if (t.type === 'income') runningBalance += t.amount
                           else if (t.type === 'expense') runningBalance -= t.amount
