@@ -166,16 +166,16 @@ export function generateActivityPDF(data: ActivityReportData): void {
   })
 
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(12)
+  doc.setFontSize(10)
   doc.setTextColor(0, 0, 0)
   doc.text('CatatUang', PAGE_WIDTH / 2, MARGIN + 5, { align: 'center' })
 
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(12)
+  doc.setFontSize(10)
   doc.text('Laporan Aktivitas Keuangan', PAGE_WIDTH / 2, MARGIN + 11, { align: 'center' })
 
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(12)
+  doc.setFontSize(10)
   doc.setTextColor(0, 0, 0)
   doc.text(`Periode: ${formatDate(data.startDate)} - ${formatDate(data.endDate)}`, PAGE_WIDTH / 2, MARGIN + 17, { align: 'center' })
 
@@ -184,7 +184,7 @@ export function generateActivityPDF(data: ActivityReportData): void {
   }
 
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(12)
+  doc.setFontSize(10)
   doc.setTextColor(0, 0, 0)
   doc.text(`Saldo Awal: ${formatNumber(data.initialBalance)}`, MARGIN, MARGIN + 31)
 
@@ -210,7 +210,7 @@ export function generateActivityPDF(data: ActivityReportData): void {
       fontStyle: 'bold',
       fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
-      fontSize: 10,
+      fontSize: 8,
       halign: 'center',
       cellPadding: 2,
       lineColor: [0, 0, 0],
@@ -218,7 +218,7 @@ export function generateActivityPDF(data: ActivityReportData): void {
     },
     styles: {
       font: 'helvetica',
-      fontSize: 9,
+      fontSize: 8,
       cellPadding: 2,
       lineColor: [0, 0, 0],
       lineWidth: 0.5,
@@ -237,7 +237,7 @@ export function generateActivityPDF(data: ActivityReportData): void {
 
   const finalY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY || 200
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(12)
+  doc.setFontSize(10)
   doc.setTextColor(0, 0, 0)
   doc.text(`Saldo Akhir: ${formatNumber(data.finalBalance)}`, MARGIN, finalY + 7)
 
