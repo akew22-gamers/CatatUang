@@ -50,6 +50,7 @@ interface TransactionWithUser {
   transaction_date: string
   wallet_name: string | null
   created_by: string | null
+  telegram_user_id: string | null
   user_name: string | null
 }
 
@@ -88,13 +89,15 @@ export default function ReportsPage() {
     try {
       setLoading(true)
       
+      const endDateTime = `${endDate}T23:59:59.999Z`
+      
       const [transactionsResult, walletsResult, profilesResult] = await Promise.all([
         supabase
           .from('transactions')
-          .select('id, type, amount, description, transaction_date, wallet_name, wallet_id, created_by')
+          .select('id, type, amount, description, transaction_date, wallet_name, wallet_id, created_by, telegram_user_id')
           .eq('group_id', 1)
           .gte('transaction_date', startDate)
-          .lte('transaction_date', endDate)
+          .lte('transaction_date', endDateTime)
           .order('transaction_date', { ascending: true }),
         supabase
           .from('wallets')
@@ -115,7 +118,7 @@ export default function ReportsPage() {
 
       const transactionsWithUser: TransactionWithUser[] = filteredTransactions.map(t => ({
         ...t,
-        user_name: t.created_by ? profileMap.get(t.created_by) || null : null
+        user_name: t.created_by ? profileMap.get(t.created_by) || null : (t.telegram_user_id ? 'Telegram User' : null)
       }))
 
       setTransactions(transactionsWithUser)
