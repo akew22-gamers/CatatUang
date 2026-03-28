@@ -16,6 +16,7 @@ export interface ActivityReportRow {
   no: number
   tanggal: string
   user: string
+  via: string
   keterangan: string
   pemasukan: string
   pengeluaran: string
@@ -192,6 +193,7 @@ export function generateActivityPDF(data: ActivityReportData): void {
     row.no,
     row.tanggal,
     row.user,
+    row.via,
     row.keterangan,
     row.pemasukan,
     row.pengeluaran,
@@ -200,7 +202,7 @@ export function generateActivityPDF(data: ActivityReportData): void {
 
   autoTable(doc, {
     startY: MARGIN + 36,
-    head: [['No', 'Tanggal', 'User', 'Keterangan', 'Pemasukan', 'Pengeluaran', 'Saldo']],
+    head: [['No', 'Tanggal', 'User', 'Via', 'Keterangan', 'Pemasukan', 'Pengeluaran', 'Saldo']],
     body: tableData,
     theme: 'grid',
     margin: { left: MARGIN, right: MARGIN },
@@ -228,10 +230,11 @@ export function generateActivityPDF(data: ActivityReportData): void {
       0: { halign: 'center', cellWidth: 10 },
       1: { halign: 'center', cellWidth: 18 },
       2: { cellWidth: 25 },
-      3: { cellWidth: 45, overflow: 'linebreak' },
-      4: { halign: 'right', cellWidth: 25 },
+      3: { halign: 'center', cellWidth: 10 },
+      4: { cellWidth: 40, overflow: 'linebreak' },
       5: { halign: 'right', cellWidth: 25 },
-      6: { halign: 'right', cellWidth: 32 }
+      6: { halign: 'right', cellWidth: 25 },
+      7: { halign: 'right', cellWidth: 27 }
     }
   })
 
@@ -267,13 +270,14 @@ export function generateActivityXLSX(data: ActivityReportData): void {
     data.walletName ? [`Dompet: ${data.walletName}`] : [],
     [`Saldo Awal: ${formatNumber(data.initialBalance)}`],
     [],
-    ['No', 'Tanggal', 'User', 'Keterangan', 'Pemasukan', 'Pengeluaran', 'Saldo']
+    ['No', 'Tanggal', 'User', 'Via', 'Keterangan', 'Pemasukan', 'Pengeluaran', 'Saldo']
   ]
 
   const tableData = data.rows.map(row => [
     row.no,
     row.tanggal,
     row.user,
+    row.via,
     row.keterangan,
     row.pemasukan || '',
     row.pengeluaran || '',
@@ -289,8 +293,8 @@ export function generateActivityXLSX(data: ActivityReportData): void {
 
   const ws = XLSX.utils.aoa_to_sheet([...headerData, ...tableData, ...footerData])
   ws['!cols'] = [
-    { wch: 5 }, { wch: 12 }, { wch: 18 }, { wch: 35 },
-    { wch: 15 }, { wch: 15 }, { wch: 15 }
+    { wch: 5 }, { wch: 12 }, { wch: 18 }, { wch: 5 },
+    { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
   ]
 
   XLSX.utils.book_append_sheet(wb, ws, 'Aktivitas')

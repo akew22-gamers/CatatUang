@@ -174,6 +174,7 @@ export default function ReportsPage() {
         no: index + 1,
         tanggal: formatDateDisplay(t.transaction_date),
         user: t.user_name || '-',
+        via: t.telegram_user_id ? 'T' : 'W',
         keterangan: t.description,
         pemasukan: t.type === 'income' ? formatNumber(t.amount) : '',
         pengeluaran: t.type === 'expense' ? formatNumber(t.amount) : '',
@@ -517,6 +518,7 @@ export default function ReportsPage() {
                         <th className="text-left py-2 px-2 font-semibold text-gray-600">No</th>
                         <th className="text-left py-2 px-2 font-semibold text-gray-600">Tanggal</th>
                         <th className="text-left py-2 px-2 font-semibold text-gray-600">User</th>
+                        <th className="text-center py-2 px-2 font-semibold text-gray-600">Via</th>
                         <th className="text-left py-2 px-2 font-semibold text-gray-600">Keterangan</th>
                         <th className="text-right py-2 px-2 font-semibold text-gray-600">Masuk</th>
                         <th className="text-right py-2 px-2 font-semibold text-gray-600">Keluar</th>
@@ -536,6 +538,15 @@ export default function ReportsPage() {
                               <td className="py-2 px-2 text-gray-500">{index + 1}</td>
                               <td className="py-2 px-2">{formatDateDisplay(t.transaction_date)}</td>
                               <td className="py-2 px-2 text-gray-600">{t.user_name || '-'}</td>
+                              <td className="py-2 px-2 text-center">
+                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold ${
+                                  t.telegram_user_id 
+                                    ? 'bg-blue-100 text-blue-700' 
+                                    : 'bg-green-100 text-green-700'
+                                }`}>
+                                  {t.telegram_user_id ? 'T' : 'W'}
+                                </span>
+                              </td>
                               <td className="py-2 px-2 text-gray-600 max-w-[200px] truncate">{t.description}</td>
                               <td className="py-2 px-2 text-right text-green-600">
                                 {t.type === 'income' ? formatNumber(t.amount) : '-'}
