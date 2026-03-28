@@ -32,8 +32,9 @@ export interface ActivityReportData {
   finalBalance: number
 }
 
-const MARGIN = 10
+const MARGIN = 15
 const PAGE_WIDTH = 210
+const PAGE_HEIGHT = 297
 const USABLE_WIDTH = PAGE_WIDTH - (MARGIN * 2)
 
 function formatCurrency(amount: number): string {
@@ -55,20 +56,22 @@ export function generateSummaryPDF(data: SummaryReportData): void {
     unit: 'mm'
   })
 
-  doc.setFontSize(18)
-  doc.setTextColor(79, 70, 229)
-  doc.text('CatatUang', PAGE_WIDTH / 2, MARGIN + 8, { align: 'center' })
-
-  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
   doc.setTextColor(0, 0, 0)
-  doc.text('Laporan Ringkasan Keuangan', PAGE_WIDTH / 2, MARGIN + 18, { align: 'center' })
+  doc.text('CatatUang', PAGE_WIDTH / 2, MARGIN + 5, { align: 'center' })
 
-  doc.setFontSize(10)
-  doc.setTextColor(107, 114, 128)
-  doc.text(`Periode: ${formatDate(data.startDate)} - ${formatDate(data.endDate)}`, PAGE_WIDTH / 2, MARGIN + 26, { align: 'center' })
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
+  doc.text('Laporan Ringkasan Keuangan', PAGE_WIDTH / 2, MARGIN + 11, { align: 'center' })
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(12)
+  doc.setTextColor(80, 80, 80)
+  doc.text(`Periode: ${formatDate(data.startDate)} - ${formatDate(data.endDate)}`, PAGE_WIDTH / 2, MARGIN + 17, { align: 'center' })
 
   if (data.walletName) {
-    doc.text(`Dompet: ${data.walletName}`, PAGE_WIDTH / 2, MARGIN + 32, { align: 'center' })
+    doc.text(`Dompet: ${data.walletName}`, PAGE_WIDTH / 2, MARGIN + 23, { align: 'center' })
   }
 
   const tableData = [
@@ -81,18 +84,28 @@ export function generateSummaryPDF(data: SummaryReportData): void {
   const colWidth = USABLE_WIDTH / 2
 
   autoTable(doc, {
-    startY: MARGIN + 40,
+    startY: MARGIN + 30,
     head: [['Kategori', 'Nilai']],
     body: tableData,
-    theme: 'striped',
+    theme: 'grid',
     margin: { left: MARGIN, right: MARGIN },
+    tableWidth: USABLE_WIDTH,
     headStyles: {
-      fillColor: [79, 70, 229],
-      textColor: [255, 255, 255],
+      font: 'helvetica',
       fontStyle: 'bold',
-      halign: 'center'
+      fillColor: [240, 240, 240],
+      textColor: [0, 0, 0],
+      fontSize: 12,
+      halign: 'center',
+      cellPadding: 3
     },
-    styles: { fontSize: 10, cellPadding: 4 },
+    styles: {
+      font: 'helvetica',
+      fontSize: 12,
+      cellPadding: 3,
+      lineColor: [200, 200, 200],
+      lineWidth: 0.1
+    },
     columnStyles: {
       0: { cellWidth: colWidth },
       1: { cellWidth: colWidth, halign: 'right' }
@@ -100,14 +113,15 @@ export function generateSummaryPDF(data: SummaryReportData): void {
   })
 
   const pageCount = doc.getNumberOfPages()
-  doc.setFontSize(8)
-  doc.setTextColor(150, 150, 150)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(128, 128, 128)
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i)
     doc.text(
       `Dicetak pada: ${new Date().toLocaleDateString('id-ID')} | Halaman ${i} dari ${pageCount}`,
       PAGE_WIDTH / 2,
-      297 - MARGIN,
+      PAGE_HEIGHT - MARGIN,
       { align: 'center' }
     )
   }
@@ -145,25 +159,28 @@ export function generateActivityPDF(data: ActivityReportData): void {
     unit: 'mm'
   })
 
-  doc.setFontSize(18)
-  doc.setTextColor(79, 70, 229)
-  doc.text('CatatUang', PAGE_WIDTH / 2, MARGIN + 8, { align: 'center' })
-
-  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
   doc.setTextColor(0, 0, 0)
-  doc.text('Laporan Aktivitas Keuangan', PAGE_WIDTH / 2, MARGIN + 18, { align: 'center' })
+  doc.text('CatatUang', PAGE_WIDTH / 2, MARGIN + 5, { align: 'center' })
 
-  doc.setFontSize(10)
-  doc.setTextColor(107, 114, 128)
-  doc.text(`Periode: ${formatDate(data.startDate)} - ${formatDate(data.endDate)}`, PAGE_WIDTH / 2, MARGIN + 26, { align: 'center' })
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
+  doc.text('Laporan Aktivitas Keuangan', PAGE_WIDTH / 2, MARGIN + 11, { align: 'center' })
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(12)
+  doc.setTextColor(80, 80, 80)
+  doc.text(`Periode: ${formatDate(data.startDate)} - ${formatDate(data.endDate)}`, PAGE_WIDTH / 2, MARGIN + 17, { align: 'center' })
 
   if (data.walletName) {
-    doc.text(`Dompet: ${data.walletName}`, PAGE_WIDTH / 2, MARGIN + 32, { align: 'center' })
+    doc.text(`Dompet: ${data.walletName}`, PAGE_WIDTH / 2, MARGIN + 23, { align: 'center' })
   }
 
-  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(12)
   doc.setTextColor(0, 0, 0)
-  doc.text(`Saldo Awal: ${formatCurrency(data.initialBalance)}`, MARGIN, MARGIN + 40)
+  doc.text(`Saldo Awal: ${formatCurrency(data.initialBalance)}`, MARGIN, MARGIN + 31)
 
   const tableData = data.rows.map(row => [
     row.no,
@@ -176,48 +193,56 @@ export function generateActivityPDF(data: ActivityReportData): void {
     row.saldo
   ])
 
-  const colWidths = [10, 22, 22, 25, 40, 25, 25, 25]
-
   autoTable(doc, {
-    startY: MARGIN + 46,
+    startY: MARGIN + 36,
     head: [['No', 'Tanggal', 'Jenis', 'User', 'Keterangan', 'Pemasukan', 'Pengeluaran', 'Saldo']],
     body: tableData,
     theme: 'grid',
     margin: { left: MARGIN, right: MARGIN },
+    tableWidth: USABLE_WIDTH,
     headStyles: {
-      fillColor: [79, 70, 229],
-      textColor: [255, 255, 255],
+      font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 8,
-      halign: 'center'
+      fillColor: [240, 240, 240],
+      textColor: [0, 0, 0],
+      fontSize: 10,
+      halign: 'center',
+      cellPadding: 2
     },
-    styles: { fontSize: 7, cellPadding: 2, overflow: 'linebreak' },
+    styles: {
+      font: 'helvetica',
+      fontSize: 10,
+      cellPadding: 2,
+      lineColor: [200, 200, 200],
+      lineWidth: 0.1,
+      overflow: 'linebreak'
+    },
     columnStyles: {
-      0: { cellWidth: colWidths[0], halign: 'center' },
-      1: { cellWidth: colWidths[1], halign: 'center' },
-      2: { cellWidth: colWidths[2], halign: 'center' },
-      3: { cellWidth: colWidths[3] },
-      4: { cellWidth: colWidths[4] },
-      5: { cellWidth: colWidths[5], halign: 'right' },
-      6: { cellWidth: colWidths[6], halign: 'right' },
-      7: { cellWidth: colWidths[7], halign: 'right' }
+      0: { halign: 'center' },
+      1: { halign: 'center' },
+      2: { halign: 'center' },
+      5: { halign: 'right' },
+      6: { halign: 'right' },
+      7: { halign: 'right' }
     }
   })
 
   const finalY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY || 200
-  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(12)
   doc.setTextColor(0, 0, 0)
-  doc.text(`Saldo Akhir: ${formatCurrency(data.finalBalance)}`, MARGIN, finalY + 8)
+  doc.text(`Saldo Akhir: ${formatCurrency(data.finalBalance)}`, MARGIN, finalY + 7)
 
   const pageCount = doc.getNumberOfPages()
-  doc.setFontSize(8)
-  doc.setTextColor(150, 150, 150)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(128, 128, 128)
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i)
     doc.text(
       `Dicetak pada: ${new Date().toLocaleDateString('id-ID')} | Halaman ${i} dari ${pageCount}`,
       PAGE_WIDTH / 2,
-      297 - MARGIN,
+      PAGE_HEIGHT - MARGIN,
       { align: 'center' }
     )
   }
