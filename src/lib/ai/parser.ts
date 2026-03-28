@@ -15,7 +15,7 @@ export interface ParsedTransaction {
 }
 
 export interface ParseResult {
-  status: 'lengkap' | 'kurang_data' | 'ambigu' | 'tidak_relevan' | 'permintaan_laporan' | 'cek_saldo' | 'cek_profile'
+  status: 'lengkap' | 'kurang_data' | 'ambigu' | 'ditolak' | 'tidak_relevan' | 'permintaan_laporan' | 'cek_saldo' | 'cek_profile'
   transaksi: ParsedTransaction[]
   pesan_balasan: string
 }
@@ -27,7 +27,7 @@ export interface ParserContext {
 }
 
 function validateParseResult(result: any): ParseResult {
-  const validStatuses = ['lengkap', 'kurang_data', 'ambigu', 'tidak_relevan', 'permintaan_laporan', 'cek_saldo', 'cek_profile']
+  const validStatuses = ['lengkap', 'kurang_data', 'ambigu', 'ditolak', 'tidak_relevan', 'permintaan_laporan', 'cek_saldo', 'cek_profile']
   
   if (!result || typeof result !== 'object') {
     throw new Error('Invalid response format')
@@ -92,6 +92,21 @@ export async function parseFinancialChat(
     console.log('Groq raw response:', content)
 
     const parsed = JSON.parse(content)
+    
+    // Post-processing: Force reject multi-transaction without nominal
+    if (parsed.transaksi && Array.isArray(parsed.transaksi) && parsed.transaksi.length > 1) {
+      const hasMissingNominal = parsed.transaksi.some((tx: any) => !tx.nominal || tx.nominal <= 0)
+      if (hasMissingNominal) {
+        const txNames = parsed.transaksi.map((tx: any) => tx.keterangan).join(', ')
+        console.log('Post-processing: Rejecting multi-transaction with missing nominal')
+        return {
+          status: 'ditolak',
+          transaksi: [],
+          pesan_balasan: `❌ Nominal tidak terdeteksi. Anda mengirim ${parsed.transaksi.length} transaksi (${txNames}) tapi ada nominal yang tidak disebutkan. Silakan input ulang dengan menyertakan nominal untuk setiap transaksi.`
+        }
+      }
+    }
+    
     const validated = validateParseResult(parsed)
     
     console.log('Validated result:', validated)
@@ -130,13 +145,36 @@ function mockParseFinancialChat(
     }
   }
   
+  const transactionSeparators = [' dan ', ',', ';', ' lalu ', ' terus ']
+  let transactionCount = 1
+  
+  for (const sep of transactionSeparators) {
+    if (message.includes(sep)) {
+      transactionCount = message.split(sep).filter(s => s.trim()).length
+      break
+    }
+  }
+  
+  const amountMatches = message.match(/(\d+(?:[.,]\d+)?)\s*(rb|k|jt|juta|ribu)?/gi)
+  const nominalCount = amountMatches ? amountMatches.length : 0
+  
+  if (transactionCount > 1 && nominalCount < transactionCount) {
+    const parts = message.split(/ dan |,|;| lalu | terus /).filter(s => s.trim())
+    const txNames = parts.map(p => p.replace(/\d+(?:[.,]\d+)?\s*(rb|k|jt|juta|ribu)?/gi, '').trim()).slice(0, transactionCount).join(', ')
+    
+    return {
+      status: 'ditolak',
+      transaksi: [],
+      pesan_balasan: `❌ Nominal tidak terdeteksi. Anda mengirim ${transactionCount} transaksi (${txNames}) tapi ada nominal yang tidak disebutkan. Silakan input ulang dengan menyertakan nominal untuk setiap transaksi.`
+    }
+  }
+  
   const incomeKeywords = ['gaji', 'terima', 'masuk', 'bonus', 'komisi', 'affiliate', 'refund', 'cashback', 'pendapatan', 'penghasilan']
   const expenseKeywords = ['beli', 'belanja', 'bayar', 'makan', 'minum', 'transfer ke', 'kirim ke', 'topup', 'top up', 'nonton', 'beli']
   
   const isIncome = incomeKeywords.some(kw => lowerMessage.includes(kw))
   const isExpense = expenseKeywords.some(kw => lowerMessage.includes(kw))
   
-  // Check if user mentioned wallet
   const walletMentioned = context.wallets.some(w => lowerMessage.includes(w.toLowerCase()))
   
   if (!isIncome && !isExpense) {
@@ -163,7 +201,6 @@ function mockParseFinancialChat(
     }
   }
   
-  // Find wallet from message
   let dompet: string | null = null
   if (walletMentioned) {
     dompet = context.wallets.find(w => lowerMessage.includes(w.toLowerCase())) || null

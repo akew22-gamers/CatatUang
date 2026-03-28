@@ -264,35 +264,44 @@ export default function ChatPage() {
     }
 
     if (transactionStatus === 'accepted') {
-      const tx = parsed.transaksi?.[0]
+      const transactions = parsed.transaksi || []
       return renderWithReplyTo(
         <div className="space-y-2 sm:space-y-3">
           <div className="flex items-center gap-2 sm:gap-3 text-green-700">
             <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-200 flex items-center justify-center flex-shrink-0">
               <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             </div>
-            <span className="font-semibold text-sm sm:text-base">Berhasil Disimpan</span>
+            <span className="font-semibold text-sm sm:text-base">
+              {transactions.length > 1 ? `${transactions.length} Transaksi Berhasil Disimpan` : 'Berhasil Disimpan'}
+            </span>
           </div>
-          {tx && (
-            <div className="grid gap-1.5 sm:gap-2 text-xs sm:text-sm bg-green-50/50 rounded-lg p-2.5 sm:p-3 border border-green-100">
-              <div className="flex justify-between items-center">
-                <span className="text-green-600">Jenis:</span>
-                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-[10px] sm:text-xs">
-                  {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-green-600">Jumlah:</span>
-                <span className="font-semibold text-gray-900 text-xs sm:text-sm">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-green-600">Keterangan:</span>
-                <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-green-600">Dompet:</span>
-                <span className="font-medium text-gray-900 text-xs sm:text-sm">{tx.dompet || '-'}</span>
-              </div>
+          {transactions.length > 0 && (
+            <div className="space-y-2">
+              {transactions.map((tx: any, idx: number) => (
+                <div key={idx} className="grid gap-1.5 sm:gap-2 text-xs sm:text-sm bg-green-50/50 rounded-lg p-2.5 sm:p-3 border border-green-100">
+                  {transactions.length > 1 && (
+                    <div className="text-xs font-semibold text-green-600 mb-1">#{idx + 1}</div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-600">Jenis:</span>
+                    <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-[10px] sm:text-xs">
+                      {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-600">Jumlah:</span>
+                    <span className="font-semibold text-gray-900 text-xs sm:text-sm">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-600">Keterangan:</span>
+                    <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-600">Dompet:</span>
+                    <span className="font-medium text-gray-900 text-xs sm:text-sm">{tx.dompet || '-'}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -300,35 +309,44 @@ export default function ChatPage() {
     }
     
     if (transactionStatus === 'rejected') {
-      const tx = parsed.transaksi?.[0]
+      const transactions = parsed.transaksi || []
       return renderWithReplyTo(
         <div className="space-y-2 sm:space-y-3">
           <div className="flex items-center gap-2 sm:gap-3 text-red-700">
             <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-red-200 flex items-center justify-center flex-shrink-0">
               <XCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             </div>
-            <span className="font-semibold text-sm sm:text-base">Dibatalkan</span>
+            <span className="font-semibold text-sm sm:text-base">
+              {transactions.length > 1 ? `${transactions.length} Transaksi Dibatalkan` : 'Dibatalkan'}
+            </span>
           </div>
-          {tx && (
-            <div className="grid gap-1.5 sm:gap-2 text-xs sm:text-sm bg-red-50/50 rounded-lg p-2.5 sm:p-3 border border-red-100">
-              <div className="flex justify-between items-center">
-                <span className="text-red-600">Jenis:</span>
-                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-[10px] sm:text-xs">
-                  {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-red-600">Jumlah:</span>
-                <span className="font-semibold text-gray-900 text-xs sm:text-sm">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-red-600">Keterangan:</span>
-                <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-red-600">Dompet:</span>
-                <span className="font-medium text-gray-900 text-xs sm:text-sm">{tx.dompet || '-'}</span>
-              </div>
+          {transactions.length > 0 && (
+            <div className="space-y-2">
+              {transactions.map((tx: any, idx: number) => (
+                <div key={idx} className="grid gap-1.5 sm:gap-2 text-xs sm:text-sm bg-red-50/50 rounded-lg p-2.5 sm:p-3 border border-red-100">
+                  {transactions.length > 1 && (
+                    <div className="text-xs font-semibold text-red-600 mb-1">#{idx + 1}</div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-red-600">Jenis:</span>
+                    <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-[10px] sm:text-xs">
+                      {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-red-600">Jumlah:</span>
+                    <span className="font-semibold text-gray-900 text-xs sm:text-sm">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-red-600">Keterangan:</span>
+                    <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-red-600">Dompet:</span>
+                    <span className="font-medium text-gray-900 text-xs sm:text-sm">{tx.dompet || '-'}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -513,9 +531,9 @@ export default function ChatPage() {
       )
     }
     
-    if (parsed.status === 'lengkap') {
-      const tx = parsed.transaksi?.[0]
-      if (!tx) return renderWithReplyTo(parsed.pesan_balasan || '')
+if (parsed.status === 'lengkap') {
+      const transactions = parsed.transaksi || []
+      if (transactions.length === 0) return renderWithReplyTo(parsed.pesan_balasan || '')
       
       return renderWithReplyTo(
         <div className="space-y-3 sm:space-y-4">
@@ -523,34 +541,45 @@ export default function ChatPage() {
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
               <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
-            <span className="font-semibold text-gray-900 text-sm sm:text-base">Transaksi Siap Disimpan</span>
+            <span className="font-semibold text-gray-900 text-sm sm:text-base">
+              {transactions.length > 1 ? `${transactions.length} Transaksi Siap Disimpan` : 'Transaksi Siap Disimpan'}
+            </span>
           </div>
-          <div className="grid gap-2 sm:gap-3 text-sm bg-gray-50/50 rounded-xl p-3 sm:p-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-500 text-xs sm:text-sm">Jenis:</span>
-              <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-xs">
-                {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
-              </Badge>
+          {transactions.map((tx: any, idx: number) => (
+            <div key={idx} className="grid gap-2 sm:gap-3 text-sm bg-gray-50/50 rounded-xl p-3 sm:p-4">
+              {transactions.length > 1 && (
+                <div className="text-xs font-semibold text-gray-500 mb-1">#{idx + 1}</div>
+              )}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-xs sm:text-sm">Jenis:</span>
+                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-xs">
+                  {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-xs sm:text-sm">Jumlah:</span>
+                <span className="font-semibold text-gray-900 text-sm sm:text-base">
+                  {tx.nominal ? `Rp ${tx.nominal.toLocaleString('id-ID')}` : '-'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-xs sm:text-sm">Keterangan:</span>
+                <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-xs sm:text-sm">Dompet:</span>
+                <span className="font-medium text-gray-900 text-xs sm:text-sm">{tx.dompet || 'Belum dipilih'}</span>
+              </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-500 text-xs sm:text-sm">Jumlah:</span>
-              <span className="font-semibold text-gray-900 text-sm sm:text-base">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-500 text-xs sm:text-sm">Keterangan:</span>
-              <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-500 text-xs sm:text-sm">Dompet:</span>
-              <span className="font-medium text-gray-900 text-xs sm:text-sm">{tx.dompet || 'Belum dipilih'}</span>
-            </div>
-          </div>
+          ))}
         </div>
       )
     }
     
     if (parsed.status === 'kurang_data') {
-      const tx = parsed.transaksi?.[0]
+      const transactions = parsed.transaksi || []
+      const transactionsWithNominal = transactions.filter((tx: any) => tx.nominal && tx.nominal > 0)
+      const transactionsWithoutNominal = transactions.filter((tx: any) => !tx.nominal || tx.nominal <= 0)
       
       return renderWithReplyTo(
         <div className="space-y-3 sm:space-y-4">
@@ -563,28 +592,53 @@ export default function ChatPage() {
               <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">{parsed.pesan_balasan}</p>
             </div>
           </div>
-          {tx && (
-            <div className="grid gap-2 sm:gap-3 text-sm bg-gray-50/50 rounded-xl p-3 sm:p-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500 text-xs sm:text-sm">Jenis:</span>
-                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-xs">
-                  {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500 text-xs sm:text-sm">Jumlah:</span>
-                <span className="font-semibold text-gray-900 text-sm sm:text-base">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500 text-xs sm:text-sm">Keterangan:</span>
-                <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500 text-xs sm:text-sm">Dompet:</span>
-                <span className="font-medium text-amber-600 text-xs sm:text-sm">Belum dipilih</span>
-              </div>
+          
+          {transactionsWithNominal.length > 0 && transactionsWithoutNominal.length === 0 && (
+            <div className="space-y-2">
+              {transactionsWithNominal.map((tx: any, idx: number) => (
+                <div key={idx} className="grid gap-2 sm:gap-3 text-sm bg-gray-50/50 rounded-xl p-3 sm:p-4">
+                  {transactions.length > 1 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-gray-500">#{transactions.indexOf(tx) + 1}</span>
+                      <span className="text-xs text-gray-600">{tx.keterangan}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 text-xs sm:text-sm">Jenis:</span>
+                    <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="font-medium text-xs">
+                      {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 text-xs sm:text-sm">Jumlah:</span>
+                    <span className="font-semibold text-gray-900 text-sm sm:text-base">Rp {tx.nominal?.toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 text-xs sm:text-sm">Keterangan:</span>
+                    <span className="text-gray-700 text-xs sm:text-sm">{tx.keterangan}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 text-xs sm:text-sm">Dompet:</span>
+                    <span className="font-medium text-amber-600 text-xs sm:text-sm">{tx.dompet || 'Belum dipilih'}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
+        </div>
+      )
+    }
+    
+    if (parsed.status === 'ditolak') {
+      return renderWithReplyTo(
+        <div className="flex items-start gap-2 sm:gap-3 text-red-600">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+            <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          </div>
+          <div>
+            <span className="font-semibold text-gray-900 text-sm sm:text-base">Transaksi Ditolak</span>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed whitespace-pre-line">{parsed.pesan_balasan}</p>
+          </div>
         </div>
       )
     }
@@ -608,19 +662,6 @@ export default function ChatPage() {
         {parsed.pesan_balasan || ''}
       </div>
     )
-  }
-
-  const formatText = (text: string) => {
-    return text.split('\n').map((line, i) => (
-      <p key={i} className="min-h-[1.5rem] leading-relaxed">
-        {line.split(/(\*\*.*?\*\*)/).map((part, j) => {
-          if (part.startsWith('**') && part.endsWith('**')) {
-            return <strong key={j} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>
-          }
-          return part
-        })}
-      </p>
-    ))
   }
 
   const updateMessageStatus = async (messageIndex: number, newStatus: 'accepted' | 'rejected') => {
@@ -697,9 +738,49 @@ export default function ChatPage() {
     toast.info('Transaksi dibatalkan')
   }
 
+  const hasTransactionsWithoutWallet = (transactions: any[]): boolean => {
+    return transactions.some((tx: any) => !tx.dompet)
+  }
+
+  const hasTransactionsWithoutNominal = (transactions: any[]): boolean => {
+    return transactions.some((tx: any) => !tx.nominal || tx.nominal <= 0)
+  }
+
+  const hasTransactionsWithWallet = (transactions: any[]): boolean => {
+    return transactions.some((tx: any) => tx.dompet)
+  }
+
+  const allTransactionsHaveWallet = (transactions: any[]): boolean => {
+    return transactions.every((tx: any) => tx.dompet)
+  }
+
+  const handleWalletSelectSingle = async (walletName: string, messageIndex: number, txIndex?: number) => {
+    setMessages(prev => {
+      const newMessages = [...prev]
+      const msg = newMessages[messageIndex]
+      if (msg && msg.data) {
+        if (txIndex !== undefined) {
+          msg.data.transaksi[txIndex].dompet = walletName
+        } else {
+          for (const tx of msg.data.transaksi) {
+            tx.dompet = walletName
+          }
+        }
+        
+        if (allTransactionsHaveWallet(msg.data.transaksi) && !hasTransactionsWithoutNominal(msg.data.transaksi)) {
+          msg.data.status = 'lengkap'
+        }
+        msg.content = renderAssistantContent(msg.data)
+        
+        if (msg.id) {
+          updateMessageInDatabase(msg.id, msg.data)
+        }
+      }
+      return newMessages
+    })
+  }
+
   const handleWalletSelect = async (walletName: string, messageIndex: number) => {
-    const supabase = createClient()
-    
     setMessages(prev => {
       const newMessages = [...prev]
       const msg = newMessages[messageIndex]
@@ -772,6 +853,30 @@ export default function ChatPage() {
       /\d+\s*(?:rb|ribu|juta|jt|k)/i,
     ]
     return amountPatterns.some(pattern => pattern.test(text))
+  }
+
+  const looksLikeMultiTransaction = (text: string): boolean => {
+    const separators = [' dan ', ',', ';', ' lalu ', ' terus ', ' terus ']
+    for (const sep of separators) {
+      if (text.includes(sep)) {
+        const parts = text.split(sep).filter(s => s.trim())
+        if (parts.length > 1) {
+          const transactionKeywords = [
+            'beli', 'makan', 'minum', 'bayar', 'gaji', 'bonus', 'transfer', 'tarik', 'setor',
+            'isi', 'pulsa', 'listrik', 'air', 'internet', 'tagihan', 'cicilan', 'utang',
+            'pinjam', 'kembali', 'jual', 'belanja', 'ngopi', 'jajan', 'snack', 'ojek',
+            'gojek', 'grab', 'shopee', 'tokopedia', 'pump', 'bensin', 'parkir', 'tol'
+          ]
+          const partsWithTransaction = parts.filter(part => 
+            transactionKeywords.some(kw => part.toLowerCase().includes(kw))
+          )
+          if (partsWithTransaction.length > 1) {
+            return true
+          }
+        }
+      }
+    }
+    return false
   }
 
   const looksLikeTransaction = (text: string): boolean => {
@@ -881,37 +986,42 @@ export default function ChatPage() {
       : undefined
     
     if (looksLikeTransaction(userMessage) && !containsAmount(userMessage)) {
-      const userMsg: Message = {
-        role: 'user',
-        content: userMessage,
-        timestamp: new Date(),
-        sender_id: userId || undefined,
-        sender_name: userName,
-        sender_role: userRole
+      if (looksLikeMultiTransaction(userMessage)) {
+        // Multi-transaction without amount - let AI handle it (will reject)
+      } else {
+        // Single transaction without amount - ask for nominal
+        const userMsg: Message = {
+          role: 'user',
+          content: userMessage,
+          timestamp: new Date(),
+          sender_id: userId || undefined,
+          sender_name: userName,
+          sender_role: userRole
+        }
+        
+        const userMsgId = await saveMessage('user', userMessage)
+        if (userMsgId) userMsg.id = userMsgId
+        setMessages(prev => [...prev, userMsg])
+        
+        const needAmountData = { 
+          status: 'need_amount', 
+          pesan_balasan: 'Sepertinya ini transaksi, tapi nominalnya berapa?',
+          originalMessage: userMessage 
+        }
+        
+        const assistantMsg: Message = {
+          role: 'assistant',
+          content: renderAssistantContent(needAmountData, undefined, replyTo),
+          data: needAmountData,
+          timestamp: new Date(),
+          reply_to: replyTo
+        }
+        
+        const msgId = await saveMessage('assistant', needAmountData.pesan_balasan, needAmountData)
+        if (msgId) assistantMsg.id = msgId
+        setMessages(prev => [...prev, assistantMsg])
+        return
       }
-      
-      const userMsgId = await saveMessage('user', userMessage)
-      if (userMsgId) userMsg.id = userMsgId
-      setMessages(prev => [...prev, userMsg])
-      
-      const needAmountData = { 
-        status: 'need_amount', 
-        pesan_balasan: 'Sepertinya ini transaksi, tapi nominalnya berapa?',
-        originalMessage: userMessage 
-      }
-      
-      const assistantMsg: Message = {
-        role: 'assistant',
-        content: renderAssistantContent(needAmountData, undefined, replyTo),
-        data: needAmountData,
-        timestamp: new Date(),
-        reply_to: replyTo
-      }
-      
-      const msgId = await saveMessage('assistant', needAmountData.pesan_balasan, needAmountData)
-      if (msgId) assistantMsg.id = msgId
-      setMessages(prev => [...prev, assistantMsg])
-      return
     }
     
     setLoading(true)
@@ -1005,16 +1115,32 @@ export default function ChatPage() {
     }
     
     if (msg.transaction_status === 'accepted') {
-      const tx = msg.data?.transaksi?.[0]
-      if (tx) {
-        return `Status: Berhasil Disimpan\nJenis: ${tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}\nJumlah: Rp ${tx.nominal?.toLocaleString('id-ID')}\nKeterangan: ${tx.keterangan}\nDompet: ${tx.dompet || '-'}`
+      const transactions = msg.data?.transaksi || []
+      if (transactions.length > 0) {
+        let text = `Status: Berhasil Disimpan (${transactions.length} transaksi)\n`
+        transactions.forEach((tx: any, idx: number) => {
+          text += `\n#${idx + 1}\n`
+          text += `Jenis: ${tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}\n`
+          text += `Jumlah: Rp ${tx.nominal?.toLocaleString('id-ID')}\n`
+          text += `Keterangan: ${tx.keterangan}\n`
+          text += `Dompet: ${tx.dompet || '-'}\n`
+        })
+        return text
       }
       return 'Transaksi berhasil disimpan!'
     }
     if (msg.transaction_status === 'rejected') {
-      const tx = msg.data?.transaksi?.[0]
-      if (tx) {
-        return `Status: Dibatalkan\nJenis: ${tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}\nJumlah: Rp ${tx.nominal?.toLocaleString('id-ID')}\nKeterangan: ${tx.keterangan}\nDompet: ${tx.dompet || '-'}`
+      const transactions = msg.data?.transaksi || []
+      if (transactions.length > 0) {
+        let text = `Status: Dibatalkan (${transactions.length} transaksi)\n`
+        transactions.forEach((tx: any, idx: number) => {
+          text += `\n#${idx + 1}\n`
+          text += `Jenis: ${tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}\n`
+          text += `Jumlah: Rp ${tx.nominal?.toLocaleString('id-ID')}\n`
+          text += `Keterangan: ${tx.keterangan}\n`
+          text += `Dompet: ${tx.dompet || '-'}\n`
+        })
+        return text
       }
       return 'Transaksi dibatalkan.'
     }
@@ -1046,9 +1172,13 @@ export default function ChatPage() {
       return `Nominal berapa? ${msg.data.pesan_balasan || ''}`
     }
     
-    const tx = msg.data?.transaksi?.[0]
-    if (tx) {
-      return `Jenis: ${tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}\nJumlah: Rp ${tx.nominal?.toLocaleString('id-ID')}\nKeterangan: ${tx.keterangan}\nDompet: ${tx.dompet || 'Belum dipilih'}`
+    const transactions = msg.data?.transaksi || []
+    if (transactions.length > 0) {
+      let text = `${transactions.length} Transaksi:\n`
+      transactions.forEach((tx: any, idx: number) => {
+        text += `#${idx + 1} ${tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'} - Rp ${tx.nominal?.toLocaleString('id-ID') || '?'} - ${tx.keterangan} (${tx.dompet || 'Belum dipilih'})\n`
+      })
+      return text.trim()
     }
     
     return msg.data?.pesan_balasan || ''
@@ -1147,37 +1277,123 @@ export default function ChatPage() {
                           <div className="space-y-3 sm:space-y-4">
                             {msg.content}
                             
-                            {msg.data?.transaksi?.[0] && !msg.data.transaksi[0].dompet && msg.transaction_status !== 'accepted' && msg.transaction_status !== 'rejected' && msg.data?.status !== 'saved' && msg.data?.status !== 'cancelled' && msg.data?.status !== 'error' && (
-                              <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t border-gray-100">
-                                <p className="text-xs font-semibold text-gray-500 flex items-center gap-2">
-                                  <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                  Pilih dompet:
-                                </p>
-                                <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                                  {walletsLoaded ? (
-                                    wallets.map((wallet) => (
-                                      <Button
-                                        key={wallet}
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => handleWalletSelect(wallet, i)}
-                                        className="text-xs h-8 sm:h-9 rounded-lg border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200"
-                                      >
-                                        {wallet}
-                                      </Button>
-                                    ))
-                                  ) : (
-                                    <div className="flex gap-1.5 sm:gap-2">
-                                      <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
-                                      <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
-                                      <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
+                            {msg.data?.transaksi?.length > 0 && hasTransactionsWithoutWallet(msg.data.transaksi) && msg.transaction_status !== 'accepted' && msg.transaction_status !== 'rejected' && msg.data?.status !== 'saved' && msg.data?.status !== 'cancelled' && msg.data?.status !== 'error' && (
+                              <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-gray-100">
+                                {msg.data.transaksi.length > 1 ? (
+                                  <>
+                                    <p className="text-xs font-semibold text-gray-700 flex items-center gap-2">
+                                      <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                      {msg.data.transaksi.length} Transaksi - Pilih dompet:
+                                    </p>
+                                    
+                                    {(msg.data._showPerTransaction || (hasTransactionsWithWallet(msg.data.transaksi) && hasTransactionsWithoutWallet(msg.data.transaksi))) ? (
+                                      <div className="space-y-3">
+                                        {msg.data.transaksi.map((tx: any, txIdx: number) => (
+                                          <div key={txIdx} className="bg-gray-50 rounded-lg p-2.5 sm:p-3">
+                                            <div className="flex items-center justify-between mb-2">
+                                              <div>
+                                                <span className="text-xs font-medium text-gray-700">{tx.keterangan}</span>
+                                                <Badge variant={tx.jenis === 'pemasukan' ? 'default' : 'destructive'} className="ml-2 text-[10px]">
+                                                  {tx.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'}
+                                                </Badge>
+                                              </div>
+                                              <span className="text-xs font-semibold text-gray-900">
+                                                {tx.nominal ? `Rp ${tx.nominal.toLocaleString('id-ID')}` : 'Nominal?'}
+                                              </span>
+                                            </div>
+                                            {tx.dompet ? (
+                                              <span className="text-xs text-green-600 font-medium">✓ {tx.dompet}</span>
+                                            ) : (
+                                              <div className="flex flex-wrap gap-1.5">
+                                                {walletsLoaded && wallets.map((wallet) => (
+                                                  <Button
+                                                    key={wallet}
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => handleWalletSelectSingle(wallet, i, txIdx)}
+                                                    className="text-[10px] h-7 rounded-md border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
+                                                  >
+                                                    {wallet}
+                                                  </Button>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                          {walletsLoaded ? (
+                                            wallets.map((wallet) => (
+                                              <Button
+                                                key={wallet}
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => handleWalletSelect(wallet, i)}
+                                                className="text-xs h-8 sm:h-9 rounded-lg border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200"
+                                              >
+                                                {wallet}
+                                              </Button>
+                                            ))
+                                          ) : (
+                                            <div className="flex gap-1.5 sm:gap-2">
+                                              <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
+                                              <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
+                                            </div>
+                                          )}
+                                        </div>
+                                        <button
+                                          onClick={() => {
+                                            setMessages(prev => {
+                                              const newMessages = [...prev]
+                                              const m = newMessages[i]
+                                              if (m && m.data) {
+                                                m.data._showPerTransaction = true
+                                                m.content = renderAssistantContent(m.data)
+                                              }
+                                              return newMessages
+                                            })
+                                          }}
+                                          className="text-xs text-indigo-600 hover:text-indigo-700 underline"
+                                        >
+                                          Atau pilih dompet berbeda per transaksi
+                                        </button>
+                                      </>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-xs font-semibold text-gray-500 flex items-center gap-2">
+                                      <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                      Pilih dompet:
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                      {walletsLoaded ? (
+                                        wallets.map((wallet) => (
+                                          <Button
+                                            key={wallet}
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleWalletSelect(wallet, i)}
+                                            className="text-xs h-8 sm:h-9 rounded-lg border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200"
+                                          >
+                                            {wallet}
+                                          </Button>
+                                        ))
+                                      ) : (
+                                        <div className="flex gap-1.5 sm:gap-2">
+                                          <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
+                                          <Skeleton className="h-8 sm:h-9 w-16 sm:w-20 rounded-lg" />
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
+                                  </>
+                                )}
                               </div>
                             )}
                             
-                            {msg.data?.status === 'lengkap' && msg.data?.transaksi?.[0]?.dompet && msg.transaction_status !== 'accepted' && msg.transaction_status !== 'rejected' && (
+                            {msg.data?.status === 'lengkap' && allTransactionsHaveWallet(msg.data?.transaksi || []) && msg.transaction_status !== 'accepted' && msg.transaction_status !== 'rejected' && (
                               <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-100">
                                 <Button 
                                   size="sm" 
@@ -1190,7 +1406,7 @@ export default function ChatPage() {
                                   ) : (
                                     <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                                   )}
-                                  {loading ? 'Menyimpan...' : 'Simpan'}
+                                  {loading ? 'Menyimpan...' : `Simpan${msg.data?.transaksi?.length > 1 ? ` (${msg.data.transaksi.length} transaksi)` : ''}`}
                                 </Button>
                                 <Button 
                                   size="sm" 
