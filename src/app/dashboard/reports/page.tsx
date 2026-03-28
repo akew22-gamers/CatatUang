@@ -29,6 +29,10 @@ function formatCurrency(amount: number): string {
   return `Rp ${amount.toLocaleString('id-ID')}`
 }
 
+function formatNumber(amount: number): string {
+  return amount.toLocaleString('id-ID')
+}
+
 function formatDateDisplay(dateString: string): string {
   const date = new Date(dateString)
   return date.toLocaleDateString('id-ID', {
@@ -156,12 +160,11 @@ export default function ReportsPage() {
       return {
         no: index + 1,
         tanggal: formatDateDisplay(t.transaction_date),
-        jenis: t.type === 'income' ? 'Pemasukan' : t.type === 'expense' ? 'Pengeluaran' : 'Transfer',
         user: t.user_name || '-',
         keterangan: t.description,
-        pemasukan: t.type === 'income' ? formatCurrency(t.amount) : '',
-        pengeluaran: t.type === 'expense' ? formatCurrency(t.amount) : '',
-        saldo: formatCurrency(runningBalance)
+        pemasukan: t.type === 'income' ? formatNumber(t.amount) : '',
+        pengeluaran: t.type === 'expense' ? formatNumber(t.amount) : '',
+        saldo: formatNumber(runningBalance)
       }
     })
 
@@ -500,7 +503,6 @@ export default function ReportsPage() {
                       <tr className="border-b border-gray-100">
                         <th className="text-left py-2 px-2 font-semibold text-gray-600">No</th>
                         <th className="text-left py-2 px-2 font-semibold text-gray-600">Tanggal</th>
-                        <th className="text-left py-2 px-2 font-semibold text-gray-600">Jenis</th>
                         <th className="text-left py-2 px-2 font-semibold text-gray-600">User</th>
                         <th className="text-left py-2 px-2 font-semibold text-gray-600">Keterangan</th>
                         <th className="text-right py-2 px-2 font-semibold text-gray-600">Masuk</th>
@@ -520,25 +522,16 @@ export default function ReportsPage() {
                             <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                               <td className="py-2 px-2 text-gray-500">{index + 1}</td>
                               <td className="py-2 px-2">{formatDateDisplay(t.transaction_date)}</td>
-                              <td className="py-2 px-2">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  t.type === 'income' 
-                                    ? 'bg-green-100 text-green-700' 
-                                    : 'bg-red-100 text-red-700'
-                                }`}>
-                                  {t.type === 'income' ? 'Masuk' : 'Keluar'}
-                                </span>
-                              </td>
                               <td className="py-2 px-2 text-gray-600">{t.user_name || '-'}</td>
                               <td className="py-2 px-2 text-gray-600 max-w-[200px] truncate">{t.description}</td>
                               <td className="py-2 px-2 text-right text-green-600">
-                                {t.type === 'income' ? formatCurrency(t.amount) : '-'}
+                                {t.type === 'income' ? formatNumber(t.amount) : '-'}
                               </td>
                               <td className="py-2 px-2 text-right text-red-600">
-                                {t.type === 'expense' ? formatCurrency(t.amount) : '-'}
+                                {t.type === 'expense' ? formatNumber(t.amount) : '-'}
                               </td>
                               <td className="py-2 px-2 text-right font-medium">
-                                {formatCurrency(runningBalance)}
+                                {formatNumber(runningBalance)}
                               </td>
                             </tr>
                           )

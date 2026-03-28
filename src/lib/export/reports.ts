@@ -15,7 +15,6 @@ export interface SummaryReportData {
 export interface ActivityReportRow {
   no: number
   tanggal: string
-  jenis: string
   user: string
   keterangan: string
   pemasukan: string
@@ -39,6 +38,10 @@ const USABLE_WIDTH = PAGE_WIDTH - (MARGIN * 2)
 
 function formatCurrency(amount: number): string {
   return `Rp ${amount.toLocaleString('id-ID')}`
+}
+
+function formatNumber(amount: number): string {
+  return amount.toLocaleString('id-ID')
 }
 
 function formatDate(dateString: string): string {
@@ -180,12 +183,11 @@ export function generateActivityPDF(data: ActivityReportData): void {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(12)
   doc.setTextColor(0, 0, 0)
-  doc.text(`Saldo Awal: ${formatCurrency(data.initialBalance)}`, MARGIN, MARGIN + 31)
+  doc.text(`Saldo Awal: ${formatNumber(data.initialBalance)}`, MARGIN, MARGIN + 31)
 
   const tableData = data.rows.map(row => [
     row.no,
     row.tanggal,
-    row.jenis,
     row.user,
     row.keterangan,
     row.pemasukan,
@@ -195,7 +197,7 @@ export function generateActivityPDF(data: ActivityReportData): void {
 
   autoTable(doc, {
     startY: MARGIN + 36,
-    head: [['No', 'Tanggal', 'Jenis', 'User', 'Keterangan', 'Pemasukan', 'Pengeluaran', 'Saldo']],
+    head: [['No', 'Tanggal', 'User', 'Keterangan', 'Pemasukan', 'Pengeluaran', 'Saldo']],
     body: tableData,
     theme: 'grid',
     margin: { left: MARGIN, right: MARGIN },
@@ -211,19 +213,19 @@ export function generateActivityPDF(data: ActivityReportData): void {
     },
     styles: {
       font: 'helvetica',
-      fontSize: 10,
+      fontSize: 9,
       cellPadding: 2,
       lineColor: [200, 200, 200],
-      lineWidth: 0.1,
-      overflow: 'linebreak'
+      lineWidth: 0.1
     },
     columnStyles: {
-      0: { halign: 'center' },
-      1: { halign: 'center' },
-      2: { halign: 'center' },
-      5: { halign: 'right' },
-      6: { halign: 'right' },
-      7: { halign: 'right' }
+      0: { halign: 'center', cellWidth: 12 },
+      1: { halign: 'center', cellWidth: 22 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 55, overflow: 'linebreak' },
+      4: { halign: 'right', cellWidth: 28 },
+      5: { halign: 'right', cellWidth: 28 },
+      6: { halign: 'right', cellWidth: 28 }
     }
   })
 
@@ -231,7 +233,7 @@ export function generateActivityPDF(data: ActivityReportData): void {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(12)
   doc.setTextColor(0, 0, 0)
-  doc.text(`Saldo Akhir: ${formatCurrency(data.finalBalance)}`, MARGIN, finalY + 7)
+  doc.text(`Saldo Akhir: ${formatNumber(data.finalBalance)}`, MARGIN, finalY + 7)
 
   const pageCount = doc.getNumberOfPages()
   doc.setFont('helvetica', 'normal')
@@ -257,15 +259,14 @@ export function generateActivityXLSX(data: ActivityReportData): void {
     ['CatatUang - Laporan Aktivitas Keuangan'],
     [`Periode: ${formatDate(data.startDate)} - ${formatDate(data.endDate)}`],
     data.walletName ? [`Dompet: ${data.walletName}`] : [],
-    [`Saldo Awal: ${formatCurrency(data.initialBalance)}`],
+    [`Saldo Awal: ${formatNumber(data.initialBalance)}`],
     [],
-    ['No', 'Tanggal', 'Jenis', 'User', 'Keterangan', 'Pemasukan', 'Pengeluaran', 'Saldo']
+    ['No', 'Tanggal', 'User', 'Keterangan', 'Pemasukan', 'Pengeluaran', 'Saldo']
   ]
 
   const tableData = data.rows.map(row => [
     row.no,
     row.tanggal,
-    row.jenis,
     row.user,
     row.keterangan,
     row.pemasukan || '',
@@ -275,15 +276,15 @@ export function generateActivityXLSX(data: ActivityReportData): void {
 
   const footerData = [
     [],
-    [`Saldo Akhir: ${formatCurrency(data.finalBalance)}`],
+    [`Saldo Akhir: ${formatNumber(data.finalBalance)}`],
     [],
     ['Dicetak pada:', new Date().toLocaleDateString('id-ID')]
   ]
 
   const ws = XLSX.utils.aoa_to_sheet([...headerData, ...tableData, ...footerData])
   ws['!cols'] = [
-    { wch: 5 }, { wch: 12 }, { wch: 15 }, { wch: 20 },
-    { wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 18 }
+    { wch: 5 }, { wch: 12 }, { wch: 18 }, { wch: 35 },
+    { wch: 15 }, { wch: 15 }, { wch: 15 }
   ]
 
   XLSX.utils.book_append_sheet(wb, ws, 'Aktivitas')
