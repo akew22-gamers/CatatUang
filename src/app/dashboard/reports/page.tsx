@@ -542,7 +542,7 @@ export default function ReportsPage() {
                                 <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold ${
                                   t.telegram_user_id 
                                     ? 'bg-blue-100 text-blue-700' 
-                                    : 'bg-green-100 text-green-700'
+                                    : 'bg-purple-100 text-purple-700'
                                 }`}>
                                   {t.telegram_user_id ? 'T' : 'A'}
                                 </span>
