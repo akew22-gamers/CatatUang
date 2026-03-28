@@ -55,15 +55,9 @@ export default function Home() {
               <span className="font-bold text-xl text-gray-900">CatatUang</span>
             </div>
             <div className="flex items-center gap-4">
-              <Link 
-                href="/login" 
-                className="hidden sm:block text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                Masuk
-              </Link>
               <Button asChild className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white px-5">
-                <Link href="/signup">
-                  Daftar
+                <Link href="/login">
+                  Masuk
                 </Link>
               </Button>
             </div>
@@ -103,19 +97,9 @@ export default function Home() {
                 size="lg"
                 className="w-full sm:w-auto h-14 px-8 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold text-lg shadow-lg shadow-indigo-200 hover:shadow-xl transition-all duration-300"
               >
-                <Link href="/signup">
+                <Link href="/login">
                   Mulai Sekarang
                   <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-              <Button 
-                asChild 
-                variant="outline" 
-                size="lg"
-                className="w-full sm:w-auto h-14 px-8 rounded-xl border-2 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 font-semibold text-lg transition-all duration-300"
-              >
-                <Link href="/login">
-                  Masuk
                 </Link>
               </Button>
             </div>
@@ -186,8 +170,8 @@ export default function Home() {
                     size="lg"
                     className="w-full sm:w-auto h-14 px-8 rounded-xl bg-white text-indigo-600 hover:bg-gray-100 font-semibold text-lg shadow-lg transition-all duration-300"
                   >
-                    <Link href="/signup">
-                      Daftar Gratis
+                    <Link href="/login">
+                      Masuk Sekarang
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Link>
                   </Button>
@@ -207,9 +191,11 @@ export default function Home() {
               </div>
               <span className="font-bold text-gray-900">CatatUang</span>
             </div>
-            <p className="text-sm text-gray-500">
-              © 2024 CatatUang. All rights reserved.
-            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-sm text-gray-500">
+              <p>© 2026 CatatUang. All rights reserved.</p>
+              <span className="hidden sm:inline">•</span>
+              <p>Developed by <span className="font-medium text-gray-700">EAS Creative Studio</span></p>
+            </div>
           </div>
         </div>
       </footer>
