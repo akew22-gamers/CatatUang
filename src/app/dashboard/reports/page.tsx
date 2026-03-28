@@ -174,7 +174,7 @@ export default function ReportsPage() {
         no: index + 1,
         tanggal: formatDateDisplay(t.transaction_date),
         user: t.user_name || '-',
-        via: t.telegram_user_id ? 'T' : 'W',
+        via: t.telegram_user_id ? 'T' : 'A',
         keterangan: t.description,
         pemasukan: t.type === 'income' ? formatNumber(t.amount) : '',
         pengeluaran: t.type === 'expense' ? formatNumber(t.amount) : '',
@@ -544,7 +544,7 @@ export default function ReportsPage() {
                                     ? 'bg-blue-100 text-blue-700' 
                                     : 'bg-green-100 text-green-700'
                                 }`}>
-                                  {t.telegram_user_id ? 'T' : 'W'}
+                                  {t.telegram_user_id ? 'T' : 'A'}
                                 </span>
                               </td>
                               <td className="py-2 px-2 text-gray-600 max-w-[200px] truncate">{t.description}</td>
