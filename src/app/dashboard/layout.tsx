@@ -12,14 +12,12 @@ import {
   LogOut,
   Menu,
   Wallet,
-  TrendingUp,
-  TrendingDown,
   User,
-  ArrowUpRight,
   BarChart3,
   ChevronDown,
   ChevronUp,
   Users,
+  Banknote,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -34,9 +32,7 @@ interface WalletItem {
 const menuItems = [
   { href: '/dashboard', label: 'Chat AI', icon: MessageSquare, adminOnly: false },
   { href: '/dashboard/transactions', label: 'Riwayat Transaksi', icon: History, adminOnly: false },
-  { href: '/dashboard/income', label: 'Pemasukan', icon: TrendingUp, adminOnly: false },
-  { href: '/dashboard/expense', label: 'Pengeluaran', icon: TrendingDown, adminOnly: false },
-  { href: '/dashboard/transfer', label: 'Transfer', icon: ArrowUpRight, adminOnly: true },
+  { href: '/dashboard/cashflow', label: 'Arus Kas', icon: Banknote, adminOnly: false },
   { href: '/dashboard/reports', label: 'Laporan', icon: BarChart3, adminOnly: false },
   { href: '/dashboard/users', label: 'Akses User', icon: Users, adminOnly: true },
   { href: '/dashboard/settings', label: 'Pengaturan', icon: Settings, adminOnly: true },

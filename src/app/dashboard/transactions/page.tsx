@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { TrendingUp, TrendingDown, Wallet, Calendar, ArrowUpRight, ArrowDownLeft, Filter } from 'lucide-react'
+import { TrendingUp, TrendingDown, Wallet, Calendar, ArrowUpRight, ArrowDownLeft, Filter, User } from 'lucide-react'
 
 interface Transaction {
   id: number
@@ -13,6 +13,20 @@ interface Transaction {
   description: string
   wallet_name: string | null
   transaction_date: string
+  created_by: string | null
+  telegram_user_id: string | null
+  user_name: string | null
+}
+
+interface Profile {
+  id: string
+  full_name: string | null
+}
+
+interface TelegramUser {
+  id: string
+  username: string | null
+  first_name: string | null
 }
 
 export default function TransactionsPage() {
@@ -40,7 +54,35 @@ export default function TransactionsPage() {
       const { data, error } = await query
 
       if (error) throw error
-      setTransactions(data || [])
+
+      const userIds = Array.from(new Set(data?.filter(t => t.created_by).map(t => t.created_by))).filter(Boolean) as string[]
+      const telegramIds = Array.from(new Set(data?.filter(t => t.telegram_user_id).map(t => t.telegram_user_id))).filter(Boolean) as string[]
+
+      const [profilesResult, telegramUsersResult] = await Promise.all([
+        userIds.length > 0 
+          ? supabase.from('profiles').select('id, full_name').in('id', userIds)
+          : { data: [] },
+        telegramIds.length > 0
+          ? supabase.from('telegram_users').select('id, username, first_name').in('id', telegramIds)
+          : { data: [] }
+      ])
+
+      const profiles: Profile[] = profilesResult.data || []
+      const telegramUsers: TelegramUser[] = telegramUsersResult.data || []
+
+      const profileMap = new Map(profiles.map(p => [p.id, p.full_name]))
+      const telegramUserMap = new Map(telegramUsers.map(u => [u.id, u.username || u.first_name]))
+
+      const transactionsWithUser = (data || []).map(t => ({
+        ...t,
+        user_name: t.created_by 
+          ? profileMap.get(t.created_by) || null
+          : t.telegram_user_id 
+            ? telegramUserMap.get(t.telegram_user_id) || 'Telegram User'
+            : null
+      }))
+
+      setTransactions(transactionsWithUser)
     } catch (error) {
       console.error('Error loading transactions:', error)
     } finally {
@@ -213,6 +255,12 @@ export default function TransactionsPage() {
                         {tx.description}
                       </p>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs sm:text-sm text-gray-500">
+                        {tx.user_name && (
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {tx.user_name}
+                          </span>
+                        )}
                         {tx.wallet_name && (
                           <span className="flex items-center gap-1">
                             <Wallet className="h-3 w-3" />

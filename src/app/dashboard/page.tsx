@@ -736,7 +736,7 @@ export default function ChatPage() {
     
     const confirmed = await confirm({
       title: "Hapus Riwayat Chat",
-      description: "Apakah Anda yakin ingin menghapus pesan Anda dari riwayat chat?",
+      description: "Apakah Anda yakin ingin menghapus semua pesan dari riwayat chat?",
       confirmText: "Hapus",
       cancelText: "Batal"
     })
@@ -749,7 +749,6 @@ export default function ChatPage() {
       const { error } = await (supabase as any)
         .from('chat_messages')
         .delete()
-        .eq('user_id', userId)
         .eq('group_id', 1)
       
       if (error) {
@@ -757,7 +756,7 @@ export default function ChatPage() {
         toast.error('Gagal menghapus riwayat chat')
       } else {
         await loadChatHistory()
-        toast.success('Pesan Anda berhasil dihapus')
+        toast.success('Semua pesan berhasil dihapus')
       }
     } catch (error) {
       console.error('Failed to clear chat:', error)
@@ -1274,7 +1273,7 @@ export default function ChatPage() {
             <div className="text-xs text-gray-400">
               {messages.length > 0 && `${messages.length} pesan`}
             </div>
-            {messages.length > 0 && (
+            {messages.length > 0 && userRole === 'admin' && (
               <Button 
                 type="button"
                 size="sm"
@@ -1283,7 +1282,7 @@ export default function ChatPage() {
                 className="h-8 px-3 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200 text-xs gap-1.5"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                Hapus Pesan Saya
+                Hapus Pesan
               </Button>
             )}
           </div>
