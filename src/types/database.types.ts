@@ -7,8 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.4"
   }
@@ -45,15 +43,7 @@ export type Database = {
           status?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "ai_confirmations_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       allowed_emails: {
         Row: {
@@ -86,15 +76,31 @@ export type Database = {
           registered_at?: string | null
           role?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "allowed_emails_added_by_fkey"
-            columns: ["added_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          created_at: string
+          group_id: number | null
+          id: number
+          is_default: boolean
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          group_id?: number | null
+          id?: never
+          is_default?: boolean
+          name: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: number | null
+          id?: never
+          is_default?: boolean
+          name?: string
+        }
+        Relationships: []
       }
       chat_messages: {
         Row: {
@@ -133,54 +139,7 @@ export type Database = {
           transaction_status?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "chat_messages_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chat_messages_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      categories: {
-        Row: {
-          created_at: string
-          group_id: number | null
-          id: number
-          is_default: boolean
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          group_id?: number | null
-          id?: never
-          is_default?: boolean
-          name: string
-        }
-        Update: {
-          created_at?: string
-          group_id?: number | null
-          id?: never
-          is_default?: boolean
-          name?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "categories_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       groups: {
         Row: {
@@ -201,15 +160,7 @@ export type Database = {
           id?: never
           name?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "groups_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -235,6 +186,33 @@ export type Database = {
           full_name?: string | null
           id?: string
           role?: string | null
+        }
+        Relationships: []
+      }
+      telegram_users: {
+        Row: {
+          created_at: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -287,43 +265,7 @@ export type Database = {
           wallet_id?: number | null
           wallet_name?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "transactions_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_from_wallet_id_fkey"
-            columns: ["from_wallet_id"]
-            isOneToOne: false
-            referencedRelation: "wallets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_to_wallet_id_fkey"
-            columns: ["to_wallet_id"]
-            isOneToOne: false
-            referencedRelation: "wallets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_wallet_id_fkey"
-            columns: ["wallet_id"]
-            isOneToOne: false
-            referencedRelation: "wallets"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       wallet_balance_history: {
         Row: {
@@ -340,7 +282,7 @@ export type Database = {
         }
         Insert: {
           change_amount: number
-          change_type?: string
+          change_type: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -362,29 +304,7 @@ export type Database = {
           transaction_id?: number | null
           wallet_id?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "wallet_balance_history_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wallet_balance_history_transaction_id_fkey"
-            columns: ["transaction_id"]
-            isOneToOne: false
-            referencedRelation: "transactions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wallet_balance_history_wallet_id_fkey"
-            columns: ["wallet_id"]
-            isOneToOne: false
-            referencedRelation: "wallets"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       wallets: {
         Row: {
@@ -411,22 +331,7 @@ export type Database = {
           name?: string
           saldo?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "wallets_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wallets_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {

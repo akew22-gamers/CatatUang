@@ -91,7 +91,7 @@ export default function ReportsPage() {
       
       const endDateTime = `${endDate}T23:59:59.999Z`
       
-      const [transactionsResult, walletsResult, profilesResult] = await Promise.all([
+      const [transactionsResult, walletsResult, profilesResult, telegramUsersResult] = await Promise.all([
         supabase
           .from('transactions')
           .select('id, type, amount, description, transaction_date, wallet_name, wallet_id, created_by, telegram_user_id')
@@ -105,11 +105,17 @@ export default function ReportsPage() {
           .eq('group_id', 1),
         supabase
           .from('profiles')
-          .select('id, full_name')
+          .select('id, full_name'),
+        supabase
+          .from('telegram_users')
+          .select('id, username, first_name, last_name')
       ])
 
       const profiles = profilesResult.data || []
       const profileMap = new Map(profiles.map(p => [p.id, p.full_name]))
+
+      const telegramUsers = telegramUsersResult.data || []
+      const telegramUserMap = new Map(telegramUsers.map(u => [u.id, u.username || u.first_name || 'Telegram User']))
 
       let filteredTransactions = transactionsResult.data || []
       if (selectedWalletId) {
@@ -118,7 +124,11 @@ export default function ReportsPage() {
 
       const transactionsWithUser: TransactionWithUser[] = filteredTransactions.map(t => ({
         ...t,
-        user_name: t.created_by ? profileMap.get(t.created_by) || null : (t.telegram_user_id ? 'Telegram User' : null)
+        user_name: t.created_by 
+          ? profileMap.get(t.created_by) || null 
+          : t.telegram_user_id 
+            ? telegramUserMap.get(t.telegram_user_id) || 'Telegram User'
+            : null
       }))
 
       setTransactions(transactionsWithUser)

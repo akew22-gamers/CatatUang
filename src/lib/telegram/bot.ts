@@ -628,6 +628,18 @@ export function setupBotHandlers() {
 
         console.log('Transaction inserted, ID:', transaction?.id)
 
+        if (ctx.from) {
+          await supabase
+            .from('telegram_users')
+            .upsert({
+              id: userId,
+              username: ctx.from.username || null,
+              first_name: ctx.from.first_name || null,
+              last_name: ctx.from.last_name || null,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'id' })
+        }
+
         let walletBalance = walletData.saldo || 0
         let changeAmount = 0
         let changeType = 'adjustment'
