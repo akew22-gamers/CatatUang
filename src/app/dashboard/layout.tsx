@@ -19,6 +19,7 @@ import {
   BarChart3,
   ChevronDown,
   ChevronUp,
+  Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -37,6 +38,7 @@ const menuItems = [
   { href: '/dashboard/expense', label: 'Pengeluaran', icon: TrendingDown, adminOnly: false },
   { href: '/dashboard/transfer', label: 'Transfer', icon: ArrowUpRight, adminOnly: true },
   { href: '/dashboard/reports', label: 'Laporan', icon: BarChart3, adminOnly: false },
+  { href: '/dashboard/users', label: 'Akses User', icon: Users, adminOnly: true },
   { href: '/dashboard/settings', label: 'Pengaturan', icon: Settings, adminOnly: true },
 ]
 
