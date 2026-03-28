@@ -380,6 +380,10 @@ export function setupBotHandlers() {
         return ctx.reply(`⚠️ ${parseResult.pesan_balasan}`, { parse_mode: 'HTML' })
       }
 
+      if (parseResult.status === 'ditolak') {
+        return ctx.reply(`❌ <b>Transaksi Ditolak</b>\n\n${parseResult.pesan_balasan}`, { parse_mode: 'HTML' })
+      }
+
       if (supabase) {
         await supabase.from('ai_confirmations').insert({
           user_id: userId,
@@ -434,7 +438,7 @@ export function setupBotHandlers() {
             if (walletList[i + 1]) row.push({ text: `💳 ${walletList[i + 1]}`, callback_data: `wallet_${txId}_${walletList[i + 1]}` })
             keyboard.push(row)
           }
-          keyboard.push([{ text: '📝 Pilih per transaksi', callback_data: `per_tx_${txId}` }])
+          keyboard.push([{ text: '📝 Pilih per transaksi', callback_data: `perwallet_${txId}` }])
         } else {
           text += `\n\n💳 Belum ada dompet. /tambah_dompet`
         }
@@ -583,7 +587,7 @@ export function setupBotHandlers() {
       return
     }
 
-    if (action === 'per_tx') {
+    if (action === 'perwallet') {
       const parseResult = confirmation.parsed_data as ParseResult
       const transactions = parseResult.transaksi || []
       const transactionsWithoutWallet = transactions.filter((tx: any) => !tx.dompet)
