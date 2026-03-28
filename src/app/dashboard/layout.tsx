@@ -22,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
+import { useConfirm } from '@/hooks/use-confirm'
 
 interface WalletItem {
   id: number
@@ -53,6 +54,7 @@ export default function DashboardLayout({
   const [walletsLoading, setWalletsLoading] = useState(true)
   const [walletsCollapsed, setWalletsCollapsed] = useState(false)
   const supabase = createClient()
+  const { confirm, ConfirmDialog } = useConfirm()
 
   useEffect(() => {
     checkUser()
@@ -109,6 +111,15 @@ export default function DashboardLayout({
   }
 
   async function handleLogout() {
+    const confirmed = await confirm({
+      title: "Keluar",
+      description: "Apakah Anda yakin ingin keluar dari aplikasi?",
+      confirmText: "Keluar",
+      cancelText: "Batal"
+    })
+    
+    if (!confirmed) return
+    
     await supabase.auth.signOut()
     router.push('/login')
   }
@@ -273,6 +284,8 @@ export default function DashboardLayout({
       <main className="flex-1 min-w-0 pt-14 md:pt-0">
         {children}
       </main>
+
+      <ConfirmDialog />
     </div>
   )
 }
