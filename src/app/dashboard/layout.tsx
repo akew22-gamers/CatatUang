@@ -32,7 +32,7 @@ interface WalletItem {
 }
 
 const menuItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: MessageSquare, adminOnly: false },
+  { href: '/dashboard', label: 'Chat AI', icon: MessageSquare, adminOnly: false },
   { href: '/dashboard/transactions', label: 'Riwayat Transaksi', icon: History, adminOnly: false },
   { href: '/dashboard/income', label: 'Pemasukan', icon: TrendingUp, adminOnly: false },
   { href: '/dashboard/expense', label: 'Pengeluaran', icon: TrendingDown, adminOnly: false },
